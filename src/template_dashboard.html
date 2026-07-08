@@ -1,0 +1,3034 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MLM ADQ | N+R Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>{{CSS}}</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-icon">&#128202;</div>
+  <div>
+    <div class="hdr-title">MLM ADQ &mdash; N+R Dashboard V1</div>
+    <div class="hdr-sub">Individuos &nbsp;|&nbsp; SIT_SITE_ID: MLM &nbsp;|&nbsp; 2025&ndash;2026</div>
+  </div>
+  <div class="hdr-ts">Generado: {{TIMESTAMP}}</div>
+</div>
+
+<div class="controls">
+  <label>Mes:</label>
+  <select id="monthSel" onchange="onMonthChange()"></select>
+  <label style="margin-left:8px">Canal:</label>
+  <select id="canalSel" onchange="onCanalChange()"></select>
+  <label style="margin-left:16px;color:#5f6368;font-size:12px;font-weight:500">Prom. meses prev:</label>
+  <input type="range" id="nPriorSlider" min="1" max="6" value="2" oninput="onNPriorChange()" style="width:100px;cursor:pointer;vertical-align:middle">
+  <span id="nPriorLabel" style="font-size:12px;font-weight:700;color:#1a73e8;min-width:48px">2 meses</span>
+  <button class="btn-dl" onclick="downloadHTML()" style="margin-left:auto;">&#11015; Descargar HTML</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" id="t-mtd"     onclick="showTab('mtd')">MTD</div>
+  <div class="tab"        id="t-nr-mensual"       onclick="showTab('nr-mensual')">NR Mensual</div>
+  <div class="tab"        id="t-installs-mensual" onclick="showTab('installs-mensual')">Installs Mensual</div>
+  <div class="tab"        id="t-nr-diario"        onclick="showTab('nr-diario')">NR Diario</div>
+  <div class="tab"        id="t-nr-diario-acum" onclick="showTab('nr-diario-acum')">NR Diario Acumulado</div>
+  <div class="tab"        id="t-perf"      onclick="showTab('perf')">Performance_vista_FM</div>
+  <div class="tab"        id="t-perf-corp" onclick="showTab('perf-corp')">Performance_vista_Corp</div>
+  <div class="tab"        id="t-analisis-oc-ucr" onclick="showTab('analisis-oc-ucr')"><span style="color:#5899D1;font-size:13px;vertical-align:middle;line-height:1;">●</span> Análisis OC+UCR</div>
+  <div class="tab"        id="t-install-activation-rate" onclick="showTab('install-activation-rate')">Install → Activ.</div>
+  <div class="tab"        id="t-comms-oc"        onclick="showTab('comms-oc')">Comms_OC</div>
+  <div class="tab"        id="t-reporting"       onclick="showTab('reporting')">Reporting</div>
+</div>
+
+<div class="content">
+
+  <div class="pane active" id="pane-mtd">
+    <!-- Toggle D-1 / D-2 para el tab MTD -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:11px;color:#666;font-weight:500">Corte de datos:</span>
+      <div style="display:flex;border:1px solid #dde3ef;border-radius:6px;overflow:hidden">
+        <button id="btn-mtd-d1" onclick="setMTDCutoff(1)"
+          style="padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;border:none;
+                 background:#1a2744;color:#f5d000;border-right:1px solid #dde3ef;transition:all .15s">
+          D-1
+        </button>
+        <button id="btn-mtd-d2" onclick="setMTDCutoff(2)"
+          style="padding:5px 14px;font-size:11px;font-weight:400;cursor:pointer;border:none;
+                 background:#fff;color:#555;border-right:1px solid #dde3ef;transition:all .15s">
+          D-2
+        </button>
+        <button id="btn-mtd-d3" onclick="setMTDCutoff(3)"
+          style="padding:5px 14px;font-size:11px;font-weight:400;cursor:pointer;border:none;
+                 background:#fff;color:#555;transition:all .15s">
+          D-3
+        </button>
+      </div>
+    </div>
+    <div id="mtd-tbl-wrap"><div class="loader"><div class="spinner"></div>Cargando...</div></div>
+    <!-- Sección corp MTD — misma estructura que NR Mensual corp pero con columnas MTD -->
+    <div id="mtd-corp-section" style="margin-top:28px;padding:12px 4px 4px 4px;border-top:2px solid #2d5986">
+      <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:8px;letter-spacing:0.3px">
+        Detalle por Canal — Estructura Corporativa (AP1 &rsaquo; Sub-canal &rsaquo; Medio)
+      </div>
+      <div id="mtd-corp-tbl-wrap"></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-nr-mensual">
+    <div class="kpi-row" id="kpi-row-nr-mensual"></div>
+    <div class="chart-box" style="margin-bottom:8px">
+      <div id="chart-nr-mensual-bar" style="height:380px"></div>
+    </div>
+    {{MOM_TABLE}}
+    <div style="margin-top:28px;padding:12px 4px 4px 4px;border-top:2px solid #2d5986">
+      <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:12px;letter-spacing:0.3px">
+        Detalle por Canal — Estructura Corporativa (AP1 &rsaquo; Sub-canal &rsaquo; Medio)
+      </div>
+      <div class="chart-box" style="margin-bottom:16px">
+        <div id="chart-nr-corp-bar" style="height:310px"></div>
+      </div>
+      {{NR_CORP_TABLE}}
+    </div>
+  </div>
+
+  <div class="pane" id="pane-nr-diario-acum">
+    <div class="kpi-row" id="kpi-row-nr-diario-acum"></div>
+    <div class="chart-box" style="margin-bottom:8px">
+      <div id="chart-nr-diario-acum-bar" style="height:480px">
+        <div class="loader"><div class="spinner"></div>Cargando...</div>
+      </div>
+    </div>
+    <div id="tbl-nr-diario-acum"></div>
+    <div class="chart-box" style="margin-top:16px">
+      <div id="chart-nr-diario-acum-line" style="height:300px"></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-nr-diario">
+    <div class="kpi-row" id="kpi-row-nr-diario"></div>
+    <div class="chart-box">
+      <div id="chart-nr-diario" style="height:480px"></div>
+    </div>
+    <div id="tbl-nr-diario"></div>
+
+    <!-- Sección Corporativa Diaria — misma estructura que NR Mensual pero a vista diaria -->
+    <div id="nr-corp-daily-section" style="margin-top:28px;padding:12px 4px 4px 4px;border-top:2px solid #2d5986">
+      <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:12px;letter-spacing:0.3px">
+        Detalle por Canal — Estructura Corporativa (AP1 &rsaquo; Sub-canal &rsaquo; Medio) — Vista Diaria
+      </div>
+      <!-- Gráfica barras apiladas N+R diario por grupo — actualizada dinámicamente con Plotly.react() -->
+      <div class="chart-box" style="margin-bottom:16px">
+        <div id="chart-nr-corp-daily-bar" style="height:300px">
+          <div class="loader"><div class="spinner"></div>Cargando...</div>
+        </div>
+      </div>
+      <!-- Tabla colapsable con N+R y Share por día — generada dinámicamente en JS -->
+      <div id="tbl-nr-corp-daily"></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-perf">
+    <div class="chart-box" style="margin-bottom:8px">
+      <div id="chart-perf-bar" style="height:380px"></div>
+    </div>
+    {{PERF_TABLE}}
+  </div>
+
+  <!-- Pestaña Performance_vista_Corp — gráfica Inversión+VPU+CPA + tabla colapsable -->
+  <div class="pane" id="pane-perf-corp">
+    <div class="chart-box" style="margin-bottom:16px">
+      <div id="chart-perf-corp-bar" style="height:330px"></div>
+    </div>
+    {{PERF_CORP_TABLE}}
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       Pestaña Análisis Estratégico OC+UCR
+       Contenido: HTML estático generado por src/builders_analysis.py
+                  → build_oc_ucr_analysis_tab_html()
+       Fuente de datos: skills/analizar-Optimizar_KPIs_oc_pom_context.md
+       Actualización: manual, al recibir nuevo dato mensual de 2026
+       Placeholder: OC_UCR_ANALYSIS_TAB
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="pane" id="pane-analisis-oc-ucr">
+    {{OC_UCR_ANALYSIS_TAB}}
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       PESTAÑA: Comms_OC — Comunicaciones OC con métricas de campaña
+       Placeholder: COMMS_OC_TABLE  (sin llaves dobles en comentario — ver bug fix §44)
+       Fuente: build_comms_oc_table_html() en builders.py
+       Datos:  processors.process_comms_oc() → Two-Tier cache + BQ semana actual
+       JS:     toggleCommsGroup(group_id) — expande/colapsa filas de detalle por canal×mes
+       ══════════════════════════════════════════════════════════════════════ -->
+  <!-- Pestaña Reporting -->
+  <div class="pane" id="pane-reporting" style="padding:0">
+    {{REPORTING_TAB}}
+  </div>
+
+  <!-- ── INSTALL → ACTIVATION RATE (§89) — análisis LFT estático ── -->
+  <div class="pane" id="pane-install-activation-rate">
+    {{INSTALL_ACTIVATION_TAB}}
+  </div>
+
+  <!-- ── INSTALLS MENSUAL (§88) — misma estructura que NR Mensual ── -->
+  <div class="pane" id="pane-installs-mensual">
+    <div class="kpi-row" id="kpi-row-installs-mensual"></div>
+    <div class="chart-box" style="margin-bottom:8px">
+      <div id="chart-installs-mensual-bar" style="height:380px"></div>
+    </div>
+    {{INSTALLS_TABLE}}
+    <div style="margin-top:28px;padding:12px 4px 4px 4px;border-top:2px solid #2d5986">
+      <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:12px;letter-spacing:0.3px">
+        Detalle por Canal — Estructura Corporativa (AP1 &rsaquo; Sub-canal &rsaquo; Medio)
+      </div>
+      <div class="chart-box" style="margin-bottom:16px">
+        <div id="chart-installs-corp-bar" style="height:310px"></div>
+      </div>
+      {{INSTALLS_CORP_TABLE}}
+    </div>
+  </div>
+
+  <div class="pane" id="pane-comms-oc" style="padding:8px 0">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+      <button onclick="downloadCommsOcXlsx()"
+        style="display:flex;align-items:center;gap:6px;padding:6px 14px;
+               background:#217346;color:#fff;border:none;border-radius:5px;
+               font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.3px"
+        title="Exporta las filas visibles (post-filtro) a Excel">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Exportar XLSX
+      </button>
+    </div>
+    {{COMMS_OC_TABLE}}
+  </div>
+
+</div><script>
+// ── DATA ────────────────────────────────────────────────────
+/* DATA_START */
+var D      = {{DATA_JSON}};
+/* DATA_END */
+const CHARTS = {{CHARTS_JSON}};
+
+// ── INIT MONTH SELECTOR ──────────────────────────────────────
+(function initMonthSel() {
+  const sel = document.getElementById('monthSel');
+  D.months.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = D.month_labels[m];
+    sel.appendChild(opt);
+  });
+  sel.value = D.latest;
+})();
+
+// ── TAB SWITCHING ─────────────────────────────────────────────
+const TABS = ['mtd','nr-mensual','installs-mensual','nr-diario','nr-diario-acum','perf','perf-corp','analisis-oc-ucr','install-activation-rate','comms-oc','reporting'];
+let activeTab = 'mtd';
+let chartsInit = {};
+
+// ── CANAL FILTER ──────────────────────────────────────────────
+(function initCanalSel() {
+  const sel = document.getElementById('canalSel');
+  const opt0 = document.createElement('option');
+  opt0.value = ''; opt0.textContent = '(Todos)';
+  sel.appendChild(opt0);
+  D.labels.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l; opt.textContent = l;
+    sel.appendChild(opt);
+  });
+})();
+
+function fmtValKPI(v) {
+  if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
+  if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+  return Number(v).toFixed(0);
+}
+
+function fmtMomKPI(v, cls) {
+  if (v === null || v === undefined) return '';
+  const dark = cls !== 'leaf';
+  const pos = dark ? '#81c995' : '#0d7a3e';
+  const neg = dark ? '#f28b82' : '#c5221f';
+  const pct = (Math.abs(v)*100).toFixed(1)+'% MoM';
+  if (v >= 0) return '<span style="color:'+pos+';font-weight:600">&#9650; '+pct+'</span>';
+  return '<span style="color:'+neg+';font-weight:600">&#9660; '+pct+'</span>';
+}
+
+// ── MTD TABLE ──────────────────────────────────────────────
+// Toggle D-1/D-2: 1 = D-1 (provisional, más fresco), 2 = D-2 (certificado, atribución OC estable)
+let _mtdCutoff = 1;
+
+function setMTDCutoff(n) {
+  _mtdCutoff = n;
+  // Actualiza estilos del toggle
+  ['btn-mtd-d1','btn-mtd-d2','btn-mtd-d3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const active = (id === 'btn-mtd-d1' && n === 1) || (id === 'btn-mtd-d2' && n === 2) || (id === 'btn-mtd-d3' && n === 3);
+    el.style.background    = active ? '#1a2744' : '#fff';
+    el.style.color         = active ? '#f5d000' : '#555';
+    el.style.fontWeight    = active ? '700' : '400';
+    el.style.borderColor   = active ? '#1a2744' : '#dde3ef';
+  });
+  const sel = document.getElementById('monthSel');
+  if (sel) renderMTDTable(sel.value);
+}
+
+function renderMTDTable(month) {
+  const wrap = document.getElementById('mtd-tbl-wrap');
+  if (!wrap) return;
+
+  const currTotalDays = ((D.daily_cum['Total N+R'] || {})[month]) || {};
+  const days = Object.keys(currTotalDays).map(Number).sort((a,b) => a-b);
+  if (!days.length) { wrap.innerHTML = '<p style="color:#888;padding:20px">Sin datos para este mes.</p>'; return; }
+  // Cutoff dinámico: D-1 (provisional) o D-2 (certificado) según _mtdCutoff toggle
+  const now = new Date();
+  const cutoffDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - _mtdCutoff);
+  const cutoffMonth = String(cutoffDate.getFullYear()).padStart(4,'0') + String(cutoffDate.getMonth()+1).padStart(2,'0');
+  let refDay;
+  if (cutoffMonth === month) {
+    const cutoffDay = cutoffDate.getDate();
+    const avail = days.filter(d => d <= cutoffDay);
+    refDay = avail.length ? avail[avail.length - 1] : days[days.length - 1];
+  } else {
+    refDay = days[days.length - 1];
+  }
+
+  let yr = parseInt(month.slice(0,4)), mo = parseInt(month.slice(4));
+  mo--; if (mo === 0) { mo = 12; yr--; }
+  const prevMonth = String(yr).padStart(4,'0') + String(mo).padStart(2,'0');
+
+  // §82: LMTD logic diferenciada por tipo de mes seleccionado:
+  //   · Mes en curso (el actual del calendario, aún incompleto):
+  //       → mismo día que MTD para comparación justa (comportamiento original)
+  //   · Mes pasado ya cerrado (histórico, todos sus días disponibles):
+  //       → último día real del mes anterior (mes completo = coincide con NR Mensual)
+  const prevDays = Object.keys((D.daily_cum['Total N+R'] || {})[prevMonth] || {}).map(Number).sort((a,b) => a-b);
+  // Detecta si el mes seleccionado ES el mes actual del calendario (en curso)
+  const _d2date = new Date(); _d2date.setDate(_d2date.getDate() - _mtdCutoff);
+  const _actualCurrentMonth = String(_d2date.getFullYear()) + String(_d2date.getMonth() + 1).padStart(2, '0');
+  const _isCurrentPeriod = (month === _actualCurrentMonth);
+  const lmtdRefDay = _isCurrentPeriod
+    ? (prevDays.includes(refDay) ? refDay : (prevDays.length ? prevDays[prevDays.length - 1] : refDay))
+    : (prevDays.length ? prevDays[prevDays.length - 1] : refDay);
+
+  const refDateStr = String(refDay).padStart(2,'0') + '/' + month.slice(4,6) + '/' + month.slice(0,4);
+  const lmtdTotal = (((D.daily_cum['Total N+R'] || {})[prevMonth]) || {})[lmtdRefDay] || 0;
+  const prevLbl   = D.month_labels[prevMonth] || prevMonth;
+  const currLbl   = D.month_labels[month] || month;
+
+  // Total de días del mes seleccionado (para proyección lineal)
+  const totalDaysInMonth = new Date(parseInt(month.slice(0,4)), parseInt(month.slice(4)), 0).getDate();
+
+  function fmtNum(v) {
+    if (v == null || isNaN(v)) return '—';
+    return Math.round(v).toLocaleString('es-MX');
+  }
+  function fmtAbs(v, dark) {
+    if (v == null || isNaN(v)) return '—';
+    const pos = dark ? '#81c995' : '#0d7a3e';
+    const neg = dark ? '#f28b82' : '#c5221f';
+    const col = v >= 0 ? pos : neg;
+    const sgn = v >= 0 ? '+' : '';
+    return '<span style="color:'+col+';font-weight:600">'+sgn+Math.round(v).toLocaleString('es-MX')+'</span>';
+  }
+  function fmtPct(v, dark) {
+    if (v == null || isNaN(v)) return '<span style="color:#aaa">—</span>';
+    const pos = dark ? '#81c995' : '#0d7a3e';
+    const neg = dark ? '#f28b82' : '#c5221f';
+    const pct = (Math.abs(v)*100).toFixed(1)+'%';
+    if (v >= 0) return '<span style="color:'+pos+';font-weight:600">&#9650; '+pct+'</span>';
+    return '<span style="color:'+neg+';font-weight:600">&#9660; '+pct+'</span>';
+  }
+  const CLS_STYLE = {
+    grand: 'background:#1a2744;color:#fff;font-weight:700',
+    sub1:  'background:#2d5986;color:#fff;font-weight:600',
+    sub2:  'background:#4a7ab5;color:#fff;font-weight:500',
+    leaf:  'background:#fff;color:#333',
+  };
+
+  let html = '<div class="mtd-info">'
+    + '<span style="font-size:11px;color:#555">Información hasta (D‑'+_mtdCutoff+'): <strong>'+refDateStr+'</strong></span>'
+    + '<span style="font-size:11px;font-weight:700;color:#C00000">Antes de 15HS MX &nbsp;|&nbsp; 18hs Arg</span>'
+    + '<span style="margin-left:auto;font-size:13px;font-weight:700;color:#1a2744">D&#8209;' + _mtdCutoff + '</span>'
+    + '</div>';
+  html += '<div class="table-scroll"><table class="mtd-tbl"><thead>';
+  html += '<tr>'
+    + '<th class="lbl-col" rowspan="2">'+currLbl+'</th>'
+    + '<th rowspan="2">LMTD<br><span style="font-weight:400;font-size:9px">'+prevLbl+' día '+lmtdRefDay+'</span></th>'
+    + '<th class="mtd-col" rowspan="2">MTD<br><span style="font-weight:400;font-size:9px">'+currLbl+' día '+refDay+'</span></th>'
+    + '<th colspan="2">Diferencias</th>'
+    + '<th rowspan="2">Plan N+R<br><span style="font-weight:400;font-size:9px">Plan mensual</span></th>'
+    + '<th rowspan="2">vs Plan M<br><span style="font-weight:400;font-size:9px">MTD vs Plan mensual</span></th>'
+    + '<th rowspan="2">vs Plan M %<br><span style="font-weight:400;font-size:9px">MTD / Plan − 1</span></th>'
+    + '<th rowspan="2">Proy. Lineal<br><span style="font-weight:400;font-size:9px">día '+refDay+' / '+totalDaysInMonth+' días</span></th>'
+    + '<th rowspan="2">Proy. vs Plan<br><span style="font-weight:400;font-size:9px">Proyección / Plan − 1</span></th>'
+    + '<th rowspan="2" title="Proyección lineal del mes actual vs cierre real del mes anterior (mes completo).">Proy. vs Cierre Ant.<br><span style="font-weight:400;font-size:9px">Proy. / Cierre '+prevLbl+' − 1</span></th>'
+    + '<th rowspan="2" title="Contribución de cada canal al cambio MoM total. Para Total N+R = MoM%.">Contrib.<br><span style="font-weight:400;font-size:9px">MoM total</span></th>'
+    + '</tr><tr><th>Absolutos</th><th>%</th></tr>';
+  html += '</thead><tbody>';
+
+  // ── Mix de Marketing: (OC+UCR + POM TOTAL + MGM TOTAL + L&P TOTAL) / Total N+R ──
+  const MIX_MKT_LABELS_MTD = ['OC + UCR', 'POM TOTAL', 'MGM TOTAL', 'L&P TOTAL'];
+  // D-1: monthly_nr (D-1 fresco). D-2: daily_cum[refDay] (certificado). Meses pasados: daily_cum.
+  const _mtdCumTotal  = ((((D.daily_cum['Total N+R']||{})[month])||{})[refDay]||0);
+  const _mtdMonthly   = (D.monthly_nr['Total N+R']||{})[month]||0;
+  const mtdTotalNR_mm = _isCurrentPeriod
+                          ? (_mtdCutoff === 1 ? _mtdMonthly : _mtdCumTotal)
+                          : _mtdCumTotal;
+  const planTotalNR_mm = (D.plan_nr['Total N+R']||{})[month]||0;
+  const lmtdManaged_mm = MIX_MKT_LABELS_MTD.reduce((s,l)=>s+((((D.daily_cum[l]||{})[prevMonth])||{})[lmtdRefDay]||0),0);
+  const mtdManaged_mm  = MIX_MKT_LABELS_MTD.reduce((s,l)=>s+((((D.daily_cum[l]||{})[month])||{})[refDay]||0),0);
+  const planManaged_mm = MIX_MKT_LABELS_MTD.reduce((s,l)=>s+((D.plan_nr[l]||{})[month]||0),0);
+  const lmtdMixPct = lmtdTotal > 0          ? lmtdManaged_mm / lmtdTotal     * 100 : null;
+  const mtdMixPct  = mtdTotalNR_mm  > 0     ? mtdManaged_mm  / mtdTotalNR_mm * 100 : null;
+  const deltaMixPp = (lmtdMixPct != null && mtdMixPct != null) ? mtdMixPct - lmtdMixPct : null;
+  const planMixPct = planTotalNR_mm > 0     ? planManaged_mm / planTotalNR_mm * 100 : null;
+  function fmtMixPct(v) {
+    if (v == null) return '<span style="color:#666">—</span>';
+    return v.toFixed(1)+'%';
+  }
+  function fmtDeltaPp(v) {
+    if (v == null) return '<span style="color:#666">—</span>';
+    const col = v >= 0 ? '#81c995' : '#f28b82';
+    const pfx = v >= 0 ? '&#9650; +' : '&#9660; ';
+    return '<span style="color:'+col+';font-weight:700">'+pfx+Math.abs(v).toFixed(1)+'pp</span>';
+  }
+  const MIX_S_LBL = 'background:#0f2140;color:#ffd966;font-weight:700;font-size:11px;'
+    + 'border-top:2px solid rgba(255,209,102,0.6);border-bottom:1px solid rgba(255,209,102,0.3)';
+  const MIX_S_VAL = 'background:#0f2140;color:#e8f0ff;font-weight:600;font-size:11px;text-align:right;'
+    + 'border-top:2px solid rgba(255,209,102,0.6);border-bottom:1px solid rgba(255,209,102,0.3)';
+  html += '<tr data-canal="__mix_mkt__">'
+    + '<td class="lbl-col" style="padding-left:10px;'+MIX_S_LBL+'">'
+    +   'Mix de Marketing'
+    +   '<span style="font-size:9px;color:#aad4ff;font-weight:400;margin-left:6px">'
+    +   '(OC+UCR + POM + MGM + L&P) / Total</span></td>'
+    + '<td style="'+MIX_S_VAL+'">'+fmtMixPct(lmtdMixPct)+'</td>'
+    + '<td class="mtd-col" style="'+MIX_S_VAL+'">'+fmtMixPct(mtdMixPct)+'</td>'
+    + '<td style="'+MIX_S_VAL+'">'+fmtDeltaPp(deltaMixPp)+'</td>'
+    + '<td style="'+MIX_S_VAL+'"><span style="color:#666">—</span></td>'
+    + '<td style="'+MIX_S_VAL+'">'+fmtMixPct(planMixPct)+'</td>'
+    + '<td style="'+MIX_S_VAL+'"><span style="color:#666">—</span></td>'
+    + '<td style="'+MIX_S_VAL+'"><span style="color:#666">—</span></td>'
+    + '<td style="'+MIX_S_VAL+'"><span style="color:#666">—</span></td>'
+    + '<td style="'+MIX_S_VAL+'"><span style="color:#666">—</span></td>'
+    + '<td style="'+MIX_S_VAL+'"><span style="color:#666">—</span></td>'
+    + '<td style="'+MIX_S_VAL+'"><span style="color:#666">—</span></td>'
+    + '</tr>';
+
+  D.labels.forEach(function(label, li) {
+    const cls  = D.classes[li];
+    const dark = cls !== 'leaf';
+    const rs   = CLS_STYLE[cls] || CLS_STYLE.leaf;
+    const pad  = 'padding-left:' + (D.indents[li]*14+10) + 'px';
+    const lmtd        = (((D.daily_cum[label] || {})[prevMonth]) || {})[lmtdRefDay] || 0;
+    // §82: para el mes en curso usar monthly_nr (raw NR sum, D-1 inmediato) en lugar de
+    // daily_cum[refDay] (CUM_NR, que tarda ~2 días en finalizarse en BQ).
+    // D-1: monthly_nr (suma total D-1, más fresco). D-2: daily_cum[refDay] (certificado).
+    // Para meses pasados siempre daily_cum[lastDay] (ya está completo en ambos casos).
+    const _mtd_cum     = (((D.daily_cum[label] || {})[month]) || {})[refDay] || 0;
+    const _mtd_monthly = (D.monthly_nr[label] || {})[month] || 0;
+    const mtd          = _isCurrentPeriod
+                           ? (_mtdCutoff === 1 ? _mtd_monthly : _mtd_cum)
+                           : _mtd_cum;
+    const abs         = mtd - lmtd;
+    const pct         = lmtd > 0 ? abs / lmtd : null;
+    const planVal     = (D.plan_nr[label] || {})[month] || null;
+    const vsPlan      = planVal != null ? mtd - planVal : null;
+    const vsPlanPct   = planVal != null && planVal > 0 ? (mtd - planVal) / planVal : null;
+    const proj            = refDay > 0 ? Math.round(mtd * totalDaysInMonth / refDay) : null;
+    const projVsPlan      = proj != null && planVal != null && planVal > 0 ? (proj - planVal) / planVal : null;
+    // Cierre real del mes anterior (mes completo, no solo D7)
+    const prevMonthFull   = (D.monthly_nr[label] || {})[prevMonth] || 0;
+    const projVsPrevFull  = proj != null && prevMonthFull > 0 ? (proj - prevMonthFull) / prevMonthFull : null;
+    const mix             = lmtdTotal > 0 ? abs / lmtdTotal : null;
+    html += '<tr data-canal="'+label+'">'
+      + '<td class="lbl-col" style="'+pad+';'+rs+'">'+label+'</td>'
+      + '<td style="'+rs+'">'+fmtNum(lmtd)+'</td>'
+      + '<td class="mtd-col" style="'+rs+'">'+fmtNum(mtd)+'</td>'
+      + '<td style="'+rs+'">'+fmtAbs(abs, dark)+'</td>'
+      + '<td style="'+rs+'">'+fmtPct(pct, dark)+'</td>'
+      + '<td style="'+rs+'">'+fmtNum(planVal)+'</td>'
+      + '<td style="'+rs+'">'+fmtAbs(vsPlan, dark)+'</td>'
+      + '<td style="'+rs+'">'+fmtPct(vsPlanPct, dark)+'</td>'
+      + '<td style="'+rs+'">'+fmtNum(proj)+'</td>'
+      + '<td style="'+rs+'">'+fmtPct(projVsPlan, dark)+'</td>'
+      + '<td style="'+rs+'">'+fmtPct(projVsPrevFull, dark)+'</td>'
+      + '<td style="'+rs+'">'+fmtPct(mix, dark)+'</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+
+  // Renderizar sección corp MTD debajo de la tabla principal
+  renderMTDCorpSection(month, refDay, lmtdRefDay, prevMonth, totalDaysInMonth);
+
+  const canal = document.getElementById('canalSel').value;
+  if (canal && canal !== 'Total N+R') {
+    const showSet = new Set(['Total N+R']);
+    const fIdx = D.labels.indexOf(canal);
+    if (fIdx >= 0) {
+      showSet.add(canal);
+      const baseInd = D.indents[fIdx];
+      for (let i = fIdx + 1; i < D.labels.length; i++) {
+        if (D.indents[i] > baseInd) showSet.add(D.labels[i]);
+        else break;
+      }
+    }
+    wrap.querySelectorAll('.mtd-tbl tbody tr').forEach(tr => {
+      const dc = tr.getAttribute('data-canal');
+      if (dc === '__mix_mkt__') { tr.style.display = ''; return; }
+      tr.style.display = showSet.has(dc) ? '' : 'none';
+    });
+  }
+}
+
+// ── MTD CORPORATIVO — Detalle por Canal Estructura Corporativa ────────────────
+// Mismas columnas que renderMTDTable() pero usando hierarchy_nr_corp_detail.
+// Datos: D.daily_nr_corp_by_node (daily NR sum 1..refDay = MTD/LMTD)
+//        D.plan_nr_corp_by_node  (plan mensual por corp_node_id)
+// Jerarquía: CORP_HIERARCHY_NODES_FOR_JS (definida en renderNRCorpDailySection)
+// Toggle: data-corp-mtd-node/parent/toggle (separados para evitar conflictos)
+
+function collapseCorpMtdNode(nodeId) {
+  // Colapso recursivo — idéntico a collapseCorpNode pero sobre data-corp-mtd-*
+  document.querySelectorAll(`.mtd-corp-tbl tr[data-corp-mtd-parent="${nodeId}"]`)
+    .forEach(r => { r.style.display = 'none'; });
+  document.querySelectorAll(`.mtd-corp-tbl tr[data-corp-mtd-parent="${nodeId}"][data-corp-mtd-node]`)
+    .forEach(r => { const c = r.dataset.corpMtdNode; if (c) collapseCorpMtdNode(c); });
+  const btn = document.querySelector(`.mtd-corp-tbl [data-corp-mtd-toggle="${nodeId}"]`);
+  if (btn) btn.textContent = '▶';
+}
+
+function toggleCorpMtdNode(nodeId) {
+  const rows = document.querySelectorAll(`.mtd-corp-tbl tr[data-corp-mtd-parent="${nodeId}"]`);
+  if (!rows.length) return;
+  const expanded = rows[0].style.display !== 'none';
+  const btn = document.querySelector(`.mtd-corp-tbl [data-corp-mtd-toggle="${nodeId}"]`);
+  if (expanded) {
+    collapseCorpMtdNode(nodeId);
+  } else {
+    rows.forEach(r => { r.style.display = ''; });
+    if (btn) btn.textContent = '▼';
+  }
+}
+
+function renderMTDCorpSection(month_key, refDay, lmtdRefDay, prevMonth, totalDaysInMonth) {
+  // Inicializar jerarquía corp si no está lista
+  _buildNrCorpDailyHierarchyLookup();
+  const corpHierarchy = Object.values(_nrCorpDailyHierarchyNodeById);
+  const wrap = document.getElementById('mtd-corp-tbl-wrap');
+  if (!wrap) return;
+
+  // ── Helpers de formato (idénticos a renderMTDTable) ──────────────────────────
+  function fmtNum(v) {
+    if (v == null || isNaN(v)) return '—';
+    return Math.round(v).toLocaleString('es-MX');
+  }
+  function fmtAbs(v) {
+    if (v == null || isNaN(v)) return '—';
+    const col = v >= 0 ? '#0d7a3e' : '#c5221f';
+    const sgn = v >= 0 ? '+' : '';
+    return '<span style="color:'+col+';font-weight:600">'+sgn+Math.round(v).toLocaleString('es-MX')+'</span>';
+  }
+  function fmtPct(v) {
+    if (v == null || isNaN(v)) return '<span style="color:#aaa">—</span>';
+    const col = v >= 0 ? '#0d7a3e' : '#c5221f';
+    const pct = (Math.abs(v)*100).toFixed(1)+'%';
+    const arrow = v >= 0 ? '&#9650;' : '&#9660;';
+    return '<span style="color:'+col+';font-weight:600">'+arrow+' '+pct+'</span>';
+  }
+
+  // ── Helper: sumar NR diario corp de día 1 a maxDay ───────────────────────────
+  // D.daily_nr_corp_by_node almacena NR diario (no acumulado) → suma = MTD/LMTD
+  function sumCorpNRUpToDay(node_id, month, maxDay) {
+    const days = (D.daily_nr_corp_by_node[node_id] || {})[month] || {};
+    let total = 0;
+    for (const [dia_str, nr_val] of Object.entries(days)) {
+      if (parseInt(dia_str) <= maxDay) total += (nr_val || 0);
+    }
+    return total;
+  }
+
+  // Totales para MIx: delta de Total corp (lmtd_total → para normalizar mix)
+  const lmtd_total_corp = sumCorpNRUpToDay('corp_total', prevMonth, lmtdRefDay);
+
+  // ── Paleta de estilos (igual que la sección corp de NR Mensual) ───────────────
+  const CORP_MTD_LEVEL_BG  = {grand:'#f0f4fa', sub1:'#ffffff', sub2:'#ffffff', medio:'#ffffff'};
+  const CORP_MTD_LEVEL_TXT = {grand:'#0d1f3c', sub1:'#0d1f3c', sub2:'#1a3562', medio:'#333333'};
+  const CORP_MTD_LEVEL_WT  = {grand:'700',     sub1:'700',     sub2:'500',     medio:'400'};
+
+  // ── Función recursiva: genera filas HTML para un nodo y sus hijos ─────────────
+  function buildCorpMtdNodeRow(node_id, parent_id_attr, hidden_initially) {
+    const node = _nrCorpDailyHierarchyNodeById[node_id];
+    if (!node) return '';
+    const level   = node.level || 'medio';
+    const label   = node.label;
+    const indent  = node.indent || 0;
+    const color   = node.color  || '#888';
+    const children = (node.children || []).filter(c => _nrCorpDailyHierarchyNodeById[c]);
+
+    const bg  = CORP_MTD_LEVEL_BG[level]  || '#ffffff';
+    const txt = CORP_MTD_LEVEL_TXT[level] || '#333333';
+    const wt  = CORP_MTD_LEVEL_WT[level]  || '400';
+    const bw  = (level === 'grand' || level === 'sub1') ? '3px' : '2px';
+    const bt  = (level === 'sub1' || level === 'grand') ? 'border-top:1px solid #e0e4ed;' : '';
+    const rs  = `${bt}background:${bg};color:${txt};font-weight:${wt};border-left:${bw} solid ${color}`;
+    const pad = `padding-left:${indent*18+10}px`;
+
+    const hidden_attr  = hidden_initially ? ' style="display:none"' : '';
+    const parent_attr  = parent_id_attr   ? ` data-corp-mtd-parent="${parent_id_attr}"` : '';
+
+    // Botón toggle o bullet
+    const toggle_html = children.length > 0
+      ? `<button onclick="toggleCorpMtdNode('${node_id}')" data-corp-mtd-toggle="${node_id}"
+           style="background:none;border:none;cursor:pointer;color:${color};font-size:10px;
+                  margin-right:4px;padding:0;font-weight:700">▶</button>`
+      : `<span style="display:inline-block;width:18px;color:${color};font-size:9px">●</span>`;
+
+    // Calcular métricas
+    const mtd_val  = sumCorpNRUpToDay(node_id, month_key, refDay);
+    const lmtd_val = sumCorpNRUpToDay(node_id, prevMonth, lmtdRefDay);
+    const abs_val  = mtd_val - lmtd_val;
+    const pct_val  = lmtd_val > 0 ? abs_val / lmtd_val : null;
+    const plan_val       = (D.plan_nr_corp_by_node[node_id] || {})[month_key] || null;
+    const vs_plan        = plan_val != null ? mtd_val - plan_val : null;
+    const proj_val       = refDay > 0 ? Math.round(mtd_val * totalDaysInMonth / refDay) : null;
+    const cierre_ant     = sumCorpNRUpToDay(node_id, prevMonth, 31);
+    const proj_vs_plan   = (plan_val != null && plan_val > 0 && proj_val != null) ? proj_val / plan_val - 1 : null;
+    const proj_vs_cierre = (cierre_ant > 0 && proj_val != null) ? proj_val / cierre_ant - 1 : null;
+    const mix_val        = lmtd_total_corp > 0 ? abs_val / lmtd_total_corp : null;
+
+    let row = `<tr${parent_attr}${hidden_attr} data-corp-mtd-node="${node_id}">`;
+    row += `<td class="lbl-col" style="${pad};${rs}">${toggle_html}${label}</td>`;
+    row += `<td style="${rs}">${fmtNum(lmtd_val)}</td>`;
+    row += `<td class="mtd-col" style="${rs}">${fmtNum(mtd_val)}</td>`;
+    row += `<td style="${rs}">${fmtAbs(abs_val)}</td>`;
+    row += `<td style="${rs}">${fmtPct(pct_val)}</td>`;
+    row += `<td style="${rs}">${plan_val != null ? fmtAbs(vs_plan) : '<span style="color:#aaa">—</span>'}</td>`;
+    row += `<td style="${rs}">${fmtNum(proj_val)}</td>`;
+    row += `<td style="${rs}">${proj_vs_plan   != null ? fmtPct(proj_vs_plan)   : '<span style="color:#aaa">—</span>'}</td>`;
+    row += `<td style="${rs}">${proj_vs_cierre != null ? fmtPct(proj_vs_cierre) : '<span style="color:#aaa">—</span>'}</td>`;
+    row += `<td style="${rs}">${fmtPct(mix_val)}</td>`;
+    row += '</tr>';
+
+    // Hijos recursivos — ocultos por defecto
+    children.forEach(child_id => {
+      row += buildCorpMtdNodeRow(child_id, node_id, true);
+    });
+    return row;
+  }
+
+  // ── Construir tabla HTML ──────────────────────────────────────────────────────
+  const currLbl = D.month_labels[month_key] || month_key;
+  const prevLbl = D.month_labels[prevMonth] || prevMonth;
+
+  let html = '<div class="table-scroll"><table class="mtd-tbl mtd-corp-tbl"><thead>';
+  html += '<tr>'
+    + '<th class="lbl-col" rowspan="2">Canal</th>'
+    + '<th rowspan="2">LMTD<br><span style="font-weight:400;font-size:9px">'+prevLbl+' día '+lmtdRefDay+'</span></th>'
+    + '<th class="mtd-col" rowspan="2">MTD<br><span style="font-weight:400;font-size:9px">'+currLbl+' día '+refDay+'</span></th>'
+    + '<th colspan="2">Diferencias</th>'
+    + '<th rowspan="2">vs Plan M<br><span style="font-weight:400;font-size:9px">MTD vs Plan mensual</span></th>'
+    + '<th rowspan="2">Proy. Lineal<br><span style="font-weight:400;font-size:9px">día '+refDay+' / '+totalDaysInMonth+' días</span></th>'
+    + '<th rowspan="2">Proy. vs Plan<br><span style="font-weight:400;font-size:9px">Proy. / Plan − 1</span></th>'
+    + '<th rowspan="2">Proy. vs Cierre Ant.<br><span style="font-weight:400;font-size:9px">Proy. / Cierre mes ant. − 1</span></th>'
+    + '<th rowspan="2">Contrib. MoM<br><span style="font-weight:400;font-size:9px">(MTD − LMTD) / LMTD Total</span></th>'
+    + '</tr><tr><th>Absolutos</th><th>%</th></tr>';
+  html += '</thead><tbody>';
+
+  // Grupos (hijos de corp_total) primero — siempre visibles
+  const rootNode = _nrCorpDailyHierarchyNodeById['corp_total'];
+  if (rootNode) {
+    (rootNode.children || []).forEach(group_id => {
+      html += buildCorpMtdNodeRow(group_id, null, false);
+    });
+  }
+
+  // Separador + Total N+R al fondo
+  html += '<tr><td colspan="10" style="border-top:2px solid #2d5986;padding:0;height:4px;background:#f0f4fa"></td></tr>';
+  html += buildCorpMtdNodeRow('corp_total', null, false);
+
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+}
+
+function renderKPIsNRMensual(month, canal) {
+  const row = document.getElementById('kpi-row-nr-mensual');
+  if (!row) return;
+  const clsMap = {};
+  D.labels.forEach((l,i) => { clsMap[l] = D.classes[i]; });
+  let rows;
+  if (!canal || canal === 'Total N+R') {
+    rows = D.labels.slice(0,4).map((l,i) => ({label:l, cls:D.classes[i]}));
+  } else {
+    rows = [{label:'Total N+R', cls:D.classes[0]}, {label:canal, cls:clsMap[canal]||'leaf'}];
+    const idx = D.labels.indexOf(canal);
+    if (idx >= 0) {
+      const baseIndent = D.indents[idx];
+      for (let i = idx + 1; i < D.labels.length; i++) {
+        if (D.indents[i] > baseIndent) {
+          if (D.classes[i] === 'leaf') rows.push({label:D.labels[i], cls:'leaf'});
+        } else break;
+      }
+    }
+  }
+  row.innerHTML = rows.map(r => {
+    const val = ((D.monthly_nr[r.label] || {})[month]) || 0;
+    const mom = ((D.monthly_mom[r.label] || {})[month]);
+    return '<div class="kpi-card kpi-'+r.cls+'">'
+      +'<div class="kpi-label">'+r.label+'</div>'
+      +'<div class="kpi-val">'+fmtValKPI(val)+'</div>'
+      +'<div class="kpi-mom">'+fmtMomKPI(mom, r.cls)+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function highlightRowNRMensual(canal) {
+  document.querySelectorAll('#pane-nr-mensual .mom-tbl tr[data-canal]').forEach(tr => {
+    tr.classList.toggle('row-highlighted', tr.dataset.canal === canal && canal !== '');
+  });
+}
+
+function filterTableNRMensual(canal) {
+  const allRows = document.querySelectorAll('#pane-nr-mensual .mom-tbl tbody tr');
+  // Las filas de plan_lines siempre se ocultan primero; se muestran solo con su canal padre
+  allRows.forEach(tr => { if (tr.hasAttribute('data-planline')) tr.style.display = 'none'; });
+
+  if (!canal || canal === 'Total N+R') {
+    allRows.forEach(tr => { if (!tr.hasAttribute('data-planline')) tr.style.display = ''; });
+    return;
+  }
+  const showLabels = new Set(['Total N+R']);
+  const idx = D.labels.indexOf(canal);
+  if (idx >= 0) {
+    showLabels.add(canal);
+    const baseIndent = D.indents[idx];
+    for (let i = idx + 1; i < D.labels.length; i++) {
+      if (D.indents[i] > baseIndent) {
+        showLabels.add(D.labels[i]);
+      } else {
+        break;
+      }
+    }
+  }
+  let lastVisible = false;
+  allRows.forEach(tr => {
+    if (tr.hasAttribute('data-planline')) {
+      // Mostrar solo cuando el canal seleccionado es exactamente el padre de esta plan_line
+      tr.style.display = (tr.getAttribute('data-planline') === canal) ? '' : 'none';
+      return;
+    }
+    if (tr.hasAttribute('data-canal')) {
+      lastVisible = showLabels.has(tr.getAttribute('data-canal'));
+      tr.style.display = lastVisible ? '' : 'none';
+    } else {
+      tr.style.display = lastVisible ? '' : 'none';
+    }
+  });
+}
+
+function highlightColNRMensual(month) {
+  document.querySelectorAll('#pane-nr-mensual .mom-tbl [data-month]').forEach(el => {
+    el.classList.toggle('col-highlighted', el.dataset.month === month);
+  });
+}
+
+function updateAnnotNRMensual(canal) {
+  const gd = document.getElementById('chart-nr-mensual-bar');
+  if (!gd || !gd.data) return;
+  const key = (!canal || canal === '') ? 'Total N+R' : canal;
+  const annots = D.months.map(m => {
+    const v = ((D.monthly_nr[key] || {})[m]) || 0;
+    return {
+      x: D.month_labels[m], y: v / 1000,
+      text: fmtValKPI(v),
+      showarrow: false, yanchor: 'bottom', yshift: 5,
+      font: {size: 9, color: '#333'}
+    };
+  });
+  Plotly.relayout('chart-nr-mensual-bar', {annotations: annots});
+}
+
+function getLeafNRToHL(canal) {
+  if (!canal) return D.leaf_labels;
+  const comps = D.hier_comps[canal];
+  if (comps === null)       return [canal];
+  if (comps === 'ALL')      return D.leaf_labels;
+  // hier_comps ya contiene label strings en V1 — no aplicar canal_to_label (ese mapea nombres BQ, no labels)
+  if (Array.isArray(comps)) return comps;
+  return D.leaf_labels;
+}
+
+function updateCPANRMensual(canal) {
+  const gd = document.getElementById('chart-nr-mensual-bar');
+  if (!gd || !gd.data) return;
+  const cprIdx = gd.data.findIndex(t => t.name === 'CPA (USD)');
+  if (cprIdx < 0) return;
+  const toHL = getLeafNRToHL(canal);
+  const newY = D.months.map(m => {
+    let nr = 0, cost = 0;
+    toHL.forEach(leaf => {
+      nr   += ((D.monthly_nr[leaf]   || {})[m]) || 0;
+      cost += ((D.monthly_cost[leaf] || {})[m]) || 0;
+    });
+    return nr > 0 ? cost / nr : null;
+  });
+  const newCust = newY.map(v => v != null ? '$' + v.toFixed(2) : '—');
+  Plotly.restyle('chart-nr-mensual-bar', {y: [newY], customdata: [newCust]}, [cprIdx]);
+}
+
+function updatePlanNRMensual(canal) {
+  const gd = document.getElementById('chart-nr-mensual-bar');
+  if (!gd || !gd.data) return;
+
+  // Plan Oficial (total del canal seleccionado)
+  const planIdx = gd.data.findIndex(t => t.name === 'Plan Oficial');
+  if (planIdx >= 0) {
+    const key = (!canal || canal === '') ? 'Total N+R' : canal;
+    const planData = D.plan_nr[key] || {};
+    const hasAnyPlan = Object.values(planData).some(v => v > 0);
+    if (!hasAnyPlan) {
+      Plotly.restyle('chart-nr-mensual-bar', {visible: false}, [planIdx]);
+    } else {
+      const newY    = D.months.map(m => { const v = planData[m]; return (v > 0) ? v/1000 : null; });
+      const newCust = newY.map(v => v != null ? fmtValKPI(v*1000) : '—');
+      Plotly.restyle('chart-nr-mensual-bar', {visible: true, y: [newY], customdata: [newCust]}, [planIdx]);
+    }
+  }
+
+  // Plan sub-líneas: mostrar solo las del canal actualmente filtrado
+  const activePlanLines = new Set((D.plan_line_map || {})[canal] || []);
+  const allPlanLineNames = new Set(Object.values(D.plan_line_map || {}).flat());
+  const plIndices = [], plVisible = [];
+  gd.data.forEach((t, i) => {
+    if (allPlanLineNames.has(t.name)) {
+      plIndices.push(i);
+      plVisible.push(activePlanLines.has(t.name));
+    }
+  });
+  if (plIndices.length) {
+    Plotly.restyle('chart-nr-mensual-bar', {visible: plVisible}, plIndices);
+  }
+}
+
+function highlightChartNRMensual(canal) {
+  const gd = document.getElementById('chart-nr-mensual-bar');
+  if (!gd || !gd.data) return;
+  const toHL = getLeafNRToHL(canal);
+  // Las plan_lines se manejan en updatePlanNRMensual, no aquí
+  const allPlanLineNames = new Set(Object.values(D.plan_line_map || {}).flat());
+  const visible = gd.data.map(t => {
+    if (allPlanLineNames.has(t.name)) return false;
+    return toHL.includes(t.name) || t.name === 'CPA (USD)' || t.name === 'Plan Oficial';
+  });
+  Plotly.restyle('chart-nr-mensual-bar', {visible: visible, opacity: 1});
+  updateAnnotNRMensual(canal);
+  updateCPANRMensual(canal);
+  updatePlanNRMensual(canal);
+}
+
+function highlightMonthNRMensual(month) {
+  const gd = document.getElementById('chart-nr-mensual-bar');
+  if (!gd || !gd.data) return;
+  Plotly.relayout('chart-nr-mensual-bar', {
+    shapes: [{
+      type:'line', xref:'x', yref:'paper',
+      x0: D.month_labels[month], x1: D.month_labels[month],
+      y0: 0, y1: 1,
+      line: {color:'#1a73e8', width:2, dash:'dot'}
+    }]
+  });
+}
+
+function onNPriorChange() {
+  const n = document.getElementById('nPriorSlider').value;
+  document.getElementById('nPriorLabel').textContent = n + ' mes' + (n == 1 ? '' : 'es');
+  if (['nr-diario-acum','nr-diario'].includes(activeTab)) renderDynamic(activeTab);
+}
+
+// ── INSTALLS MENSUAL — funciones JS (§88) ────────────────────────────────────
+// Análogos exactos de las funciones NR Mensual, usando D.monthly_installs.
+
+function renderKPIsInstallsMensual(month, canal) {
+  const row = document.getElementById('kpi-row-installs-mensual');
+  if (!row) return;
+  const clsMap = {};
+  D.labels.forEach((l, i) => { clsMap[l] = D.classes[i]; });
+  let rows;
+  if (!canal || canal === 'Total N+R') {
+    rows = D.labels.slice(0, 4).map((l, i) => ({ label: l, cls: D.classes[i] }));
+  } else {
+    rows = [{ label: 'Total N+R', cls: D.classes[0] }, { label: canal, cls: clsMap[canal] || 'leaf' }];
+    const idx = D.labels.indexOf(canal);
+    if (idx >= 0) {
+      const baseIndent = D.indents[idx];
+      for (let i = idx + 1; i < D.labels.length; i++) {
+        if (D.indents[i] > baseIndent) {
+          if (D.classes[i] === 'leaf') rows.push({ label: D.labels[i], cls: 'leaf' });
+        } else break;
+      }
+    }
+  }
+  row.innerHTML = rows.map(r => {
+    const val = ((D.monthly_installs[r.label] || {})[month]) || 0;
+    const mom = ((D.monthly_installs_mom[r.label] || {})[month]);
+    return '<div class="kpi-card kpi-' + r.cls + '">'
+      + '<div class="kpi-label">' + r.label + '</div>'
+      + '<div class="kpi-val">' + fmtValKPI(val) + '</div>'
+      + '<div class="kpi-mom">' + fmtMomKPI(mom, r.cls) + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function filterTableInstallsMensual(canal) {
+  const allRows = document.querySelectorAll('#pane-installs-mensual .mom-tbl tbody tr');
+  if (!canal || canal === 'Total N+R') {
+    allRows.forEach(tr => { tr.style.display = ''; });
+    return;
+  }
+  const showLabels = new Set(['Total N+R']);
+  const idx = D.labels.indexOf(canal);
+  if (idx >= 0) {
+    showLabels.add(canal);
+    const baseIndent = D.indents[idx];
+    for (let i = idx + 1; i < D.labels.length; i++) {
+      if (D.indents[i] > baseIndent) showLabels.add(D.labels[i]);
+      else break;
+    }
+  }
+  let lastVisible = false;
+  allRows.forEach(tr => {
+    if (tr.hasAttribute('data-canal')) {
+      lastVisible = showLabels.has(tr.getAttribute('data-canal'));
+      tr.style.display = lastVisible ? '' : 'none';
+    } else {
+      tr.style.display = lastVisible ? '' : 'none';
+    }
+  });
+}
+
+function highlightColInstallsMensual(month) {
+  document.querySelectorAll('#pane-installs-mensual .mom-tbl [data-month]').forEach(el => {
+    el.classList.toggle('col-highlighted', el.dataset.month === month);
+  });
+}
+
+function updateAnnotInstallsMensual(canal) {
+  const gd = document.getElementById('chart-installs-mensual-bar');
+  if (!gd || !gd.data) return;
+  const key = (!canal || canal === '') ? 'Total N+R' : canal;
+  const instMonths = D.installs_months || D.months;
+  const mlbls      = D.month_labels || {};
+  const annots = instMonths.map(m => {
+    const v = ((D.monthly_installs[key] || {})[m]) || 0;
+    return {
+      x: mlbls[m] || m, y: v / 1000,
+      text: fmtValKPI(v),
+      showarrow: false, yanchor: 'bottom', yshift: 5,
+      font: { size: 9, color: '#333' }
+    };
+  });
+  Plotly.relayout('chart-installs-mensual-bar', { annotations: annots });
+}
+
+function updateCPIInstallsMensual(canal) {
+  // CPI = Inversión Total / Installs Totales
+  const gd = document.getElementById('chart-installs-mensual-bar');
+  if (!gd || !gd.data) return;
+  const cpiIdx = gd.data.findIndex(t => t.name === 'CPI (USD)');
+  if (cpiIdx < 0) return;
+  const toHL       = getLeafNRToHL(canal);
+  const instMonths = D.installs_months || D.months;
+  const newY = instMonths.map(m => {
+    let inst = 0, cost = 0;
+    toHL.forEach(leaf => {
+      inst += ((D.monthly_installs[leaf] || {})[m]) || 0;
+      cost += ((D.monthly_cost[leaf]    || {})[m]) || 0;
+    });
+    return inst > 0 ? cost / inst : null;
+  });
+  const newCust = newY.map(v => v != null ? '$' + v.toFixed(2) : '—');
+  Plotly.restyle('chart-installs-mensual-bar', { y: [newY], customdata: [newCust] }, [cpiIdx]);
+}
+
+function highlightChartInstallsMensual(canal) {
+  const gd = document.getElementById('chart-installs-mensual-bar');
+  if (!gd || !gd.data) return;
+  const toHL    = getLeafNRToHL(canal);
+  const visible = gd.data.map(t =>
+    toHL.includes(t.name) || t.name === 'CPI (USD)'
+  );
+  Plotly.restyle('chart-installs-mensual-bar', { visible: visible, opacity: 1 });
+  updateAnnotInstallsMensual(canal);
+  updateCPIInstallsMensual(canal);
+}
+
+function highlightMonthInstallsMensual(month) {
+  const gd = document.getElementById('chart-installs-mensual-bar');
+  if (!gd || !gd.data) return;
+  Plotly.relayout('chart-installs-mensual-bar', {
+    shapes: [{
+      type: 'line', xref: 'x', yref: 'paper',
+      x0: (D.month_labels || {})[month] || month,
+      x1: (D.month_labels || {})[month] || month,
+      y0: 0, y1: 1,
+      line: { color: '#1a73e8', width: 2, dash: 'dot' }
+    }]
+  });
+}
+
+// Toggle/colapso Corp Installs — análogos a toggleCorpNode / collapseCorpNode
+function toggleCorpInstallsNode(nodeId) {
+  const childRows = document.querySelectorAll(
+    '[data-corp-inst-parent="' + nodeId + '"]'
+  );
+  const btn = document.querySelector('[data-corp-inst-toggle="' + nodeId + '"]');
+  const isCollapsed = childRows.length > 0 && childRows[0].style.display === 'none';
+  childRows.forEach(r => { r.style.display = isCollapsed ? '' : 'none'; });
+  if (btn) btn.textContent = isCollapsed ? '▼' : '▶';
+}
+
+function collapseCorpInstallsNode(nodeId) {
+  document.querySelectorAll('[data-corp-inst-parent="' + nodeId + '"]').forEach(r => {
+    r.style.display = 'none';
+    if (r.dataset.corpInstNode) collapseCorpInstallsNode(r.dataset.corpInstNode);
+  });
+  const btn = document.querySelector('[data-corp-inst-toggle="' + nodeId + '"]');
+  if (btn) btn.textContent = '▶';
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+function onCanalChange() {
+  const month = document.getElementById('monthSel').value;
+  const canal = document.getElementById('canalSel').value;
+  renderKPIsNRMensual(month, canal);
+  highlightRowNRMensual(canal);
+  filterTableNRMensual(canal);
+  highlightChartNRMensual(canal);
+  if (activeTab === 'mtd')                renderMTDTable(month);
+  if (activeTab === 'nr-diario-acum')     renderDynamic('nr-diario-acum');
+  if (activeTab === 'nr-diario')          renderDynamic('nr-diario');
+  if (activeTab === 'perf')               { filterTablePerf(canal); updateChartPerf(canal); }
+  if (activeTab === 'installs-mensual')   { filterTableInstallsMensual(canal); highlightChartInstallsMensual(canal); }
+}
+
+function showTab(tab) {
+  TABS.forEach(t => {
+    document.getElementById('t-'    + t).classList.toggle('active', t===tab);
+    document.getElementById('pane-' + t).classList.toggle('active', t===tab);
+  });
+  activeTab = tab;
+  if (!chartsInit[tab]) {
+    chartsInit[tab] = true;
+    initTab(tab);
+  }
+}
+
+function onMonthChange() {
+  const month = document.getElementById('monthSel').value;
+  const canal = document.getElementById('canalSel').value;
+  renderKPIsNRMensual(month, canal);
+  highlightColNRMensual(month);
+  highlightMonthNRMensual(month);
+  if (activeTab === 'mtd') renderMTDTable(month);
+  if (['nr-diario-acum','nr-diario'].includes(activeTab)) renderDynamic(activeTab);
+  if (activeTab === 'perf')              { highlightColPerf(month); }
+  if (activeTab === 'perf-corp')         { highlightColPerfCorp(month); }
+  if (activeTab === 'comms-oc')          { filterCommsOcByMonth(month); }
+  if (activeTab === 'installs-mensual')  { renderKPIsInstallsMensual(month, canal); highlightColInstallsMensual(month); highlightMonthInstallsMensual(month); }
+}
+
+function initTab(tab) {
+  switch(tab) {
+    case 'mtd':
+      renderMTDTable(document.getElementById('monthSel').value);
+      break;
+    case 'nr-mensual':
+      Plotly.newPlot('chart-nr-mensual-bar', CHARTS.mom_bar.data, CHARTS.mom_bar.layout, {responsive:true}).then(() => {
+        const canal = document.getElementById('canalSel').value;
+        highlightChartNRMensual(canal);
+      });
+      // Gráfica corporativa (% participación por grupo) — inicializar una sola vez
+      if (!document.getElementById('chart-nr-corp-bar')._hasPlot) {
+        Plotly.newPlot('chart-nr-corp-bar', CHARTS.nr_corp_bar.data, CHARTS.nr_corp_bar.layout, {responsive:true});
+        document.getElementById('chart-nr-corp-bar')._hasPlot = true;
+      }
+      break;
+    case 'nr-diario-acum':
+      renderDynamic('nr-diario-acum');
+      break;
+    case 'nr-diario':
+      renderDynamic('nr-diario');
+      break;
+    case 'perf': {
+      const canal = document.getElementById('canalSel').value;
+      const month = document.getElementById('monthSel').value;
+      Plotly.newPlot('chart-perf-bar', CHARTS.perf_bar.data, CHARTS.perf_bar.layout, {responsive:true}).then(() => {
+        updateChartPerf(canal);
+      });
+      filterTablePerf(canal);
+      highlightColPerf(month);
+      break;
+    }
+    case 'perf-corp': {
+      const month = document.getElementById('monthSel').value;
+      // Gráfica: inicializar una sola vez con flag ._hasPlot
+      if (!document.getElementById('chart-perf-corp-bar')._hasPlot) {
+        Plotly.newPlot('chart-perf-corp-bar',
+          CHARTS.perf_corp_bar.data,
+          CHARTS.perf_corp_bar.layout,
+          {responsive: true});
+        document.getElementById('chart-perf-corp-bar')._hasPlot = true;
+      }
+      highlightColPerfCorp(month);
+      break;
+    }
+    case 'install-activation-rate':
+      // Charts renderizados inline desde Python (§89) — solo init una vez
+      if (typeof initInstallActivationCharts === 'function') initInstallActivationCharts();
+      break;
+    case 'installs-mensual': {
+      // Plotly chart barras apiladas Installs + línea CPI
+      Plotly.newPlot('chart-installs-mensual-bar',
+        CHARTS.installs_bar.data, CHARTS.installs_bar.layout,
+        { responsive: true }
+      ).then(() => {
+        const canal = document.getElementById('canalSel').value;
+        highlightChartInstallsMensual(canal);
+      });
+      // Chart Corp installs — inicializar una sola vez con flag ._hasPlot
+      if (!document.getElementById('chart-installs-corp-bar')._hasPlot) {
+        Plotly.newPlot('chart-installs-corp-bar',
+          CHARTS.installs_corp_bar.data, CHARTS.installs_corp_bar.layout,
+          { responsive: true });
+        document.getElementById('chart-installs-corp-bar')._hasPlot = true;
+      }
+      // KPIs con el mes activo
+      const monthI = document.getElementById('monthSel').value;
+      const canalI = document.getElementById('canalSel').value;
+      renderKPIsInstallsMensual(monthI, canalI);
+      break;
+    }
+    case 'comms-oc': {
+      const month = document.getElementById('monthSel').value;
+      // Construir la barra de filtros solo la primera vez (§75: flag cambió a comms-f-fuente)
+      if (!document.getElementById('comms-f-fuente')) {
+        initCommsOcFilters();  // pobla dropdowns con valores únicos del DOM
+      }
+      // Aplica filtro de mes + recalcula KPI cards
+      filterCommsOcByMonth(month);
+      break;
+    }
+  }
+}
+
+// ── renderCommsOcKPIs — KPI cards de la pestaña Comms_OC ─────────────────────
+// §75: Migrado a BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR + NR_ACQUISITION.
+// Datos de cada <tr> (puestos por builders.build_comms_oc_table_html()):
+//   data-test/arrived/open   : funnel (INT)
+//   data-open-rate           : tasa apertura [0-1] (FLOAT)
+//   data-user-inc/value-inc  : impacto incremental (FLOAT)
+//   data-absoluto            : NR absoluto sin calibrar (FLOAT, Rama A only)
+//   data-ratio               : ratio canibalización [0-1] (FLOAT, Rama A only)
+// Grupos: Funnel | Eficiencia | Impacto | Canibalización
+function renderCommsOcKPIs() {
+  const allCommsOcDataRows = document.querySelectorAll('#pane-comms-oc tr[data-month]');
+
+  let totalComms = 0, totalTest = 0, totalArrived = 0, totalOpen = 0;
+  let openRateValues = [];
+  let totalUserInc = 0, totalUserIncAdj = 0, totalValueInc = 0;
+  let totalAbsoluto = 0, totalControlNr = 0, ratioValues = [];
+
+  allCommsOcDataRows.forEach(row => {
+    if (row.style.display === 'none') return;
+    totalComms++;
+    totalTest    += parseInt(row.dataset.test    || 0);
+    totalArrived += parseInt(row.dataset.arrived || 0);
+    totalOpen    += parseInt(row.dataset.open    || 0);
+
+    let or = parseFloat(row.dataset.openRate);
+    // Fallback §83: si ARRIVED=0 pero hay SENTS y OPEN, calcular OR = OPEN/SENTS
+    if (isNaN(or) || or === 0) {
+      const _op = parseInt(row.dataset.open    || 0);
+      const _sn = parseInt(row.dataset.sents   || 0);
+      const _ar = parseInt(row.dataset.arrived || 0);
+      if (_op > 0 && _sn > 0 && _ar === 0) or = _op / _sn;
+    }
+    if (!isNaN(or) && or > 0) openRateValues.push(or);
+
+    const ui    = parseFloat(row.dataset.userInc);
+    const uiadj = parseFloat(row.dataset.userIncAdj);
+    const vi    = parseFloat(row.dataset.valueInc);
+    if (!isNaN(ui))    totalUserInc    += ui;
+    if (!isNaN(uiadj)) totalUserIncAdj += uiadj;
+    if (!isNaN(vi))    totalValueInc   += vi;
+
+    const ab  = parseFloat(row.dataset.absoluto);
+    const cnr = parseFloat(row.dataset.controlNr);
+    const ra  = parseFloat(row.dataset.ratio);
+    if (!isNaN(ab))  totalAbsoluto  += ab;
+    if (!isNaN(cnr)) totalControlNr += cnr;
+    if (!isNaN(ra))  ratioValues.push(ra);
+  });
+
+  const avg = (arr) => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+  const avgOpenRate = avg(openRateValues);
+  const avgRatio    = avg(ratioValues);
+
+  const fmtInt = (v) => {
+    if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
+    if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+    return v.toLocaleString('es-MX');
+  };
+  const fmtPct = (v) => v === null ? '—' : (v*100).toFixed(1)+'%';
+  const fmtIncColored = (v) => {
+    const col = v>=0 ? '#0d7a3e' : '#c5221f';
+    return `<span style="color:${col};font-weight:700">${v>=0?'+':''}${fmtInt(Math.abs(v))}</span>`;
+  };
+  const fmtUSD = (v) => {
+    const abs = Math.abs(v), col = v>=0?'#0d7a3e':'#c5221f';
+    const fmt = abs>=1e6?(abs/1e6).toFixed(2)+'M':abs>=1e3?(abs/1e3).toFixed(1)+'K':abs.toFixed(0);
+    return `<span style="color:${col};font-weight:700">${v>=0?'+$':'-$'}${fmt}</span>`;
+  };
+  const fmtRatioColor = (v) => {
+    if (v===null) return '—';
+    const pct = v*100;
+    const col = pct>50?'#c5221f':pct>20?'#e37400':'#0d7a3e';
+    return `<span style="color:${col};font-weight:700">${pct.toFixed(1)}%</span>`;
+  };
+
+  const CARD_BASE = 'background:#fff;border:1px solid #e4e8f0;border-radius:6px;padding:10px 14px;min-width:110px;flex:1';
+  const card = (lbl,val,sub,accent) =>
+    `<div style="${CARD_BASE};border-top:3px solid ${accent}">
+      <div style="font-size:9.5px;color:#7a8499;text-transform:uppercase;letter-spacing:.5px;font-weight:500">${lbl}</div>
+      <div style="font-size:17px;font-weight:700;color:#1a2744;margin:5px 0 3px">${val}</div>
+      <div style="font-size:9.5px;color:#aab">${sub}</div></div>`;
+
+  const FC='#5899D1', PC='#2F9E8F', IC='#F5A664', RC='#E1484C';
+
+  const kpiHTML = `<div style="padding:12px 0 16px">
+    <div style="font-size:9px;color:#aab;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
+      Funnel — Usuarios únicos por paso (Sents / SHOWN / OPEN)
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+      ${card('Comuns.',  fmtInt(totalComms),   'comunicaciones', FC)}
+      ${card('Sents',    fmtInt(totalTest),    'usuarios únicos',FC)}
+      ${card('Arrived',  fmtInt(totalArrived), 'usuarios únicos',FC)}
+      ${card('Open',     fmtInt(totalOpen),    'usuarios únicos',FC)}
+      ${card('Avg Open%',fmtPct(avgOpenRate),  'promedio',       PC)}
+    </div>
+    <div style="font-size:9px;color:#aab;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
+      Impacto incremental &amp; Canibalización orgánica
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${card('Σ User Inc',       fmtIncColored(totalUserInc),    'lift NR (Torre)',      IC)}
+      ${card('Σ User Inc Adj',  fmtIncColored(totalUserIncAdj), 'NR con Adjust',       IC)}
+      ${card('Σ Value Inc',     fmtUSD(totalValueInc),          'incremental USD',     IC)}
+      ${card('Σ NR_TOTAL_Test',   fmtInt(totalAbsoluto),    'conversiones grupo test',  RC)}
+      ${card('Σ NR_TOTAL_Control',fmtInt(totalControlNr),  'conversiones grupo control',RC)}
+      ${card('Avg % Canibalizac.',fmtRatioColor(avgRatio),   'prom. orgánico/bruto', RC)}
+    </div>
+  </div>`;
+
+  const kpiContainer = document.getElementById('comms-oc-kpi-row');
+  if (kpiContainer) kpiContainer.innerHTML = kpiHTML;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COMMS_OC — SISTEMA DE FILTROS
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// ARQUITECTURA:
+//   _commsOcFilterState  → estado global de todos los filtros activos
+//   initCommsOcFilters() → construye la barra de filtros (una sola vez al entrar al tab)
+//   onCommsOcFilterChange() → lee los inputs y actualiza _commsOcFilterState
+//   applyCommsOcFilters()   → aplica TODOS los filtros (AND), muestra/oculta filas,
+//                             llama renderCommsOcKPIs() sobre las filas visibles
+//   clearCommsOcFilters()   → resetea todos los filtros (respeta el mes del selector global)
+//   filterCommsOcByMonth()  → actualiza solo el filtro de mes, delega a applyCommsOcFilters()
+//
+// TIPOS DE FILTRO:
+//   Dropdowns (valores exactos/contains): APP, CANAL, STRATEGY, SUBSTRATEGY, BIZ_SEGMENT
+//   Text search (substring, case insensitive): CAMPAÑA, TÍTULO, TEXTO
+//
+// LÓGICA DE MATCHING:
+//   Dropdowns simples (APP, CANAL): match exacto → row.dataset.xxx === filterValue
+//   Dropdowns STRING_AGG (STRATEGY/SUBSTRAT/BIZSEG): contains → string.includes(value)
+//     porque el campo puede ser "UCRANIA | ACQUISITION" y se selecciona "UCRANIA"
+//   Text inputs: substring insensible a mayúsculas
+//
+// FUENTE DE DATOS:
+//   Los data-* attributes en cada <tr> son puestos por builders.build_comms_oc_table_html().
+//   escape_attr() en Python garantiza que no haya comillas rotas en los atributos.
+
+// ── Estado global de filtros ──────────────────────────────────────────────────
+// month viene del selector global #monthSel; el resto de la barra interna de Comms_OC.
+// Dropdowns son Sets (multi-select): Set vacío = sin filtro activo.
+// '__EMPTY__' en el Set = filtrar filas donde el campo está vacío.
+// §75: schema actualizado — removidos app/typename/title/text (columnas eliminadas)
+// Añadidos: fuente (FUENTE_TABLA), clasif (CLASIF_CAMPAIGNS)
+const _commsOcFilterState = {
+  month:     '',        // 'YYYYMM' del selector global
+  fecha:     new Set(), // multi-select exacto — Fecha Envío (YYYY-MM-DD)
+  fuente:    new Set(), // multi-select exacto — FUENTE_TABLA (ALL_CAMPAIGNS_NR | NR_ACQUISITION)
+  canal:     new Set(), // multi-select exacto — CANAL
+  strategy:  new Set(), // multi-select exacto — STRATEGY
+  substrat:  new Set(), // multi-select exacto — SUBSTRATEGY
+  clasif:    new Set(), // multi-select exacto — CLASIF_CAMPAIGNS
+  notiftype: new Set(), // multi-select exacto — NOTIFICATION_TYPE
+  team:      new Set(), // multi-select exacto — TEAM
+  bl:        new Set(), // multi-select exacto — BUSINESS_LINE
+  bizseg:     new Set(), // multi-select exacto — BUSINESS_LINE_SEGMENT
+  enfoque:       new Set(), // multi-select exacto — Enfoque (derivado de CAMPAIGN_NAME)
+  experiment:    new Set(), // multi-select exacto — EXPERIMENT (EYG | Mantika | BANDIT)
+  corpsubcanal:    new Set(), // multi-select exacto — Corp Sub-canal (derivado §83)
+  corpsubcanalaux: new Set(), // multi-select exacto — Corp Sub-canal Aux (con OTHERS_SELLERS)
+  fmsubcanal:      new Set(), // multi-select exacto — FM Sub-canal (derivado §83)
+  fmsubcanalaux:   new Set(), // multi-select exacto — FM Sub-canal Aux (con OTHERS_SELLERS)
+  mediofinal:      new Set(), // multi-select exacto — Medio Final (CANAL o JOURNEY para flows)
+  campaign:      new Set(), // multi-select con búsqueda — CAMPAIGN_NAME_CLEAN (§83)
+};
+
+// ── Helpers multi-select Comms_OC ────────────────────────────────────────────
+// toggleCommsOcMS: abre/cierra el panel del filtro; cierra los demás.
+function toggleCommsOcMS(filterId) {
+  document.querySelectorAll('#comms-oc-filters [id$="-panel"]').forEach(p => {
+    if (p.id !== filterId + '-panel') p.style.display = 'none';
+  });
+  const panel = document.getElementById(filterId + '-panel');
+  if (panel) panel.style.display = (panel.style.display === 'none' ? 'block' : 'none');
+}
+
+// getCommsOcMSValues: retorna un Set con los valores de checkboxes marcados.
+function getCommsOcMSValues(filterId) {
+  const panel = document.getElementById(filterId + '-panel');
+  if (!panel) return new Set();
+  return new Set([...panel.querySelectorAll('input[type="checkbox"]:checked')].map(cb => cb.value));
+}
+
+// updateCommsOcMSLabel: actualiza el label del botón del multi-select.
+function updateCommsOcMSLabel(filterId) {
+  const vals = getCommsOcMSValues(filterId);
+  const lbl  = document.getElementById(filterId + '-lbl');
+  if (!lbl) return;
+  if (vals.size === 0) { lbl.textContent = 'Todos'; return; }
+  if (vals.size === 1) {
+    const v = [...vals][0];
+    lbl.textContent = v === '__EMPTY__' ? '(Vacío)' : v;
+  } else {
+    lbl.textContent = vals.size + ' selec.';
+  }
+}
+
+// ── selectAllVisibleCommsOcMS — GLOBAL — botón "Seleccionar todos los que coinciden"
+// Toma las campañas únicas de las FILAS VISIBLES (respeta otros filtros activos)
+// más el término de búsqueda escrito en el buscador del panel.
+function selectAllVisibleCommsOcMS(panelId) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+
+  const searchInput = panel.querySelector('input[type="text"]');
+  const searchTerm  = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+  const matchingCampaigns = new Set();
+  document.querySelectorAll('#pane-comms-oc tr[data-month]').forEach(row => {
+    if (row.style.display !== 'none') {
+      const camp = (row.dataset.campaign || '').trim();
+      if (camp && (!searchTerm || camp.toLowerCase().includes(searchTerm))) {
+        matchingCampaigns.add(camp);
+      }
+    }
+  });
+
+  if (matchingCampaigns.size === 0) return;
+
+  panel.querySelectorAll('.coc-ms-opt[data-val]').forEach(opt => {
+    const cb = opt.querySelector('input[type="checkbox"]');
+    if (!cb || cb.checked) return;
+    if (matchingCampaigns.has(cb.value)) cb.checked = true;
+  });
+
+  onCommsOcFilterChange();
+}
+
+// ── initCommsOcFilters — construye la barra de filtros (corre una sola vez) ──
+// Pobla los dropdowns con los valores únicos que existen en las filas del DOM.
+// Para STRING_AGG, hace split por ' | ' para extraer cada valor individual.
+function initCommsOcFilters() {
+  const allRows = document.querySelectorAll('#pane-comms-oc tr[data-month]');
+
+  // §75: schema actualizado — exactos (no STRING_AGG) desde nuevas tablas
+  const sets = {
+    fecha: new Set(), fuente: new Set(), canal: new Set(),
+    strategy: new Set(), substrat: new Set(), clasif: new Set(),
+    notiftype: new Set(), team: new Set(), bl: new Set(), bizseg: new Set(),
+    enfoque: new Set(), experiment: new Set(),
+    corpsubcanal: new Set(), corpsubcanalaux: new Set(),
+    fmsubcanal: new Set(), fmsubcanalaux: new Set(), mediofinal: new Set(),
+    campaign: new Set()
+  };
+
+  allRows.forEach(row => {
+    const add = (key, val) => { if(val && val.trim()) sets[key].add(val.trim()); };
+    add('fecha',        row.dataset.fecha);
+    add('fuente',       row.dataset.fuente);
+    add('canal',        row.dataset.canal);
+    add('strategy',     row.dataset.strategy);
+    add('substrat',     row.dataset.substrat);
+    add('clasif',       row.dataset.clasif);
+    add('notiftype',    row.dataset.notiftype);
+    add('team',         row.dataset.team);
+    add('bl',           row.dataset.bl);
+    add('bizseg',       row.dataset.bizseg);
+    add('enfoque',      row.dataset.enfoque);
+    add('experiment',   row.dataset.experiment);
+    add('corpsubcanal',    row.dataset.corpsubcanal);
+    add('corpsubcanalaux', row.dataset.corpsubcanalaux);
+    add('fmsubcanal',      row.dataset.fmsubcanal);
+    add('fmsubcanalaux',   row.dataset.fmsubcanalaux);
+    add('mediofinal',      row.dataset.mediofinal);
+    add('campaign',     row.dataset.campaign);
+  });
+
+  // Helper: genera un multi-select con checkboxes + opción (Vacío)
+  const makeMultiSelect = (filterId, label, valuesSet) => {
+    const panelId = filterId + '-panel';
+    const lblId   = filterId + '-lbl';
+    const emptyOpt = `<label class="coc-ms-opt"><input type="checkbox" value="__EMPTY__" onchange="onCommsOcFilterChange()"> (Vacío)</label>`;
+    const valueOpts = [...valuesSet].sort()
+      .map(v => `<label class="coc-ms-opt"><input type="checkbox" value="${v.replace(/"/g,'&quot;')}" onchange="onCommsOcFilterChange()"> ${v}</label>`)
+      .join('');
+    return `
+      <div style="display:flex;flex-direction:column;gap:2px;position:relative">
+        <label style="font-size:9px;color:#7a8499;text-transform:uppercase;letter-spacing:.4px;font-weight:500">${label}</label>
+        <div id="${filterId}" onclick="toggleCommsOcMS('${filterId}')"
+          style="font-size:11px;padding:4px 24px 4px 8px;border:1px solid #dde3ef;border-radius:4px;
+                 color:#333;background:#fff;min-width:100px;cursor:pointer;position:relative;
+                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:none;
+                 height:26px;line-height:18px;box-sizing:border-box">
+          <span id="${lblId}">Todos</span>
+          <span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);color:#999;font-size:9px">▾</span>
+        </div>
+        <div id="${panelId}" style="display:none;position:absolute;top:calc(100% + 2px);left:0;z-index:9999;
+             background:#fff;border:1px solid #c8d0e0;border-radius:4px;
+             box-shadow:0 4px 14px rgba(0,0,0,.13);padding:4px 0;
+             max-height:220px;overflow-y:auto;min-width:160px;width:max-content">
+          ${emptyOpt}${valueOpts}
+        </div>
+      </div>`;
+  };
+
+  // Helper: multi-select con búsqueda integrada + botón "Seleccionar visibles"
+  const makeSearchableMultiSelect = (filterId, label, valuesSet) => {
+    const panelId  = filterId + '-panel';
+    const lblId    = filterId + '-lbl';
+    const searchId = filterId + '-search';
+    const emptyOpt = `<label class="coc-ms-opt" data-val=""><input type="checkbox" value="__EMPTY__" onchange="onCommsOcFilterChange()"> (Vacío)</label>`;
+    const valueOpts = [...valuesSet].sort()
+      .map(v => `<label class="coc-ms-opt" data-val="${v.toLowerCase().replace(/"/g,'&quot;')}"><input type="checkbox" value="${v.replace(/"/g,'&quot;')}" onchange="onCommsOcFilterChange()"> ${v}</label>`)
+      .join('');
+    return `
+      <div style="display:flex;flex-direction:column;gap:2px;position:relative;flex:1;min-width:180px">
+        <label style="font-size:9px;color:#7a8499;text-transform:uppercase;letter-spacing:.4px;font-weight:500">${label}</label>
+        <div id="${filterId}" onclick="toggleCommsOcMS('${filterId}')"
+          style="font-size:11px;padding:4px 24px 4px 8px;border:1px solid #dde3ef;border-radius:4px;
+                 color:#333;background:#fff;min-width:160px;cursor:pointer;position:relative;
+                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:none;
+                 height:26px;line-height:18px;box-sizing:border-box">
+          <span id="${lblId}">Todos</span>
+          <span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);color:#999;font-size:9px">▾</span>
+        </div>
+        <div id="${panelId}" style="display:none;position:absolute;top:calc(100% + 2px);left:0;z-index:9999;
+             background:#fff;border:1px solid #c8d0e0;border-radius:4px;
+             box-shadow:0 4px 14px rgba(0,0,0,.13);min-width:260px;width:max-content;max-width:440px">
+          <div style="padding:6px 8px;border-bottom:1px solid #e4e8f0;background:#f8fafd;border-radius:4px 4px 0 0">
+            <input id="${searchId}" type="text" placeholder="Escriba para filtrar..."
+              oninput="filterCommsOcMSOptions('${panelId}',this.value)"
+              onclick="event.stopPropagation()"
+              style="width:100%;padding:4px 8px;border:1px solid #c8d0e0;border-radius:4px;font-size:11px;box-sizing:border-box;margin-bottom:5px">
+            <button onclick="event.stopPropagation();selectAllVisibleCommsOcMS('${panelId}')"
+              style="width:100%;padding:3px 8px;font-size:10px;font-weight:600;cursor:pointer;
+                     border:1px solid #1565c0;border-radius:4px;background:#e3f2fd;color:#1565c0">
+              ☑ Seleccionar todos los que coinciden
+            </button>
+          </div>
+          <div style="max-height:220px;overflow-y:auto;padding:4px 0">
+            ${emptyOpt}${valueOpts}
+          </div>
+        </div>
+      </div>`;
+  };
+
+  // Helper: genera un <input type="text"> para búsqueda por substring
+  const makeText = (filterId, label, placeholder) => `
+    <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:130px">
+      <label for="${filterId}" style="font-size:9px;color:#7a8499;text-transform:uppercase;letter-spacing:.4px;font-weight:500">${label}</label>
+      <input id="${filterId}" type="text" placeholder="${placeholder}" oninput="onCommsOcFilterChange()"
+        style="font-size:11px;padding:4px 8px;border:1px solid #dde3ef;border-radius:4px;color:#333;width:100%;box-sizing:border-box">
+    </div>`;
+
+  const filterBarHTML = `
+    <style>
+      .coc-ms-opt { display:flex;align-items:center;gap:6px;padding:4px 12px;font-size:11px;
+                    color:#333;cursor:pointer;white-space:nowrap; }
+      .coc-ms-opt:hover { background:#f0f4fa; }
+      .coc-ms-opt input[type="checkbox"] { cursor:pointer;accent-color:#1a73e8; }
+    </style>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;padding:12px 14px;
+                background:#f8fafd;border:1px solid #e4e8f0;border-radius:6px;
+                align-items:flex-end;margin-bottom:10px">
+      ${makeMultiSelect('comms-f-fecha',     'Fecha Envío',    sets.fecha)}
+      ${makeMultiSelect('comms-f-fuente',    'Fuente',         sets.fuente)}
+      ${makeMultiSelect('comms-f-canal',     'Canal',          sets.canal)}
+      ${makeMultiSelect('comms-f-strategy',  'Strategy',       sets.strategy)}
+      ${makeMultiSelect('comms-f-substrat',  'Substrategy',    sets.substrat)}
+      ${makeMultiSelect('comms-f-clasif',    'Clasif',         sets.clasif)}
+      ${makeMultiSelect('comms-f-notiftype', 'Notif. Type',    sets.notiftype)}
+      ${makeMultiSelect('comms-f-team',      'Team',           sets.team)}
+      ${makeMultiSelect('comms-f-bl',           'Biz Line',          sets.bl)}
+      ${makeMultiSelect('comms-f-bizseg',      'Seg. Canal',        sets.bizseg)}
+      ${makeMultiSelect('comms-f-enfoque',     'Enfoque',           sets.enfoque)}
+      ${makeMultiSelect('comms-f-experiment',  'Experiment',        sets.experiment)}
+      ${makeMultiSelect('comms-f-corpsubcanal',   'Corp Sub-canal',     sets.corpsubcanal)}
+      ${makeMultiSelect('comms-f-corpsubcanalaux','Corp Sub-canal Aux', sets.corpsubcanalaux)}
+      ${makeMultiSelect('comms-f-fmsubcanal',     'FM Sub-canal',       sets.fmsubcanal)}
+      ${makeMultiSelect('comms-f-fmsubcanalaux',  'FM Sub-canal Aux',   sets.fmsubcanalaux)}
+      ${makeMultiSelect('comms-f-mediofinal',     'Medio Final',        sets.mediofinal)}
+      ${makeSearchableMultiSelect('comms-f-campaign', 'Campaña', sets.campaign)}
+      <div style="display:flex;flex-direction:column;justify-content:flex-end">
+        <button onclick="clearCommsOcFilters()"
+          style="font-size:11px;padding:5px 14px;border:1px solid #c5221f;
+                 border-radius:4px;color:#c5221f;background:#fff;cursor:pointer;
+                 white-space:nowrap">
+          × Limpiar
+        </button>
+      </div>
+    </div>`;
+
+  const container = document.getElementById('comms-oc-filters');
+  if (container) container.innerHTML = filterBarHTML;
+
+  // Cerrar paneles al hacer click fuera de la barra de filtros (una sola vez)
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#comms-oc-filters')) {
+      document.querySelectorAll('#comms-oc-filters [id$="-panel"]')
+        .forEach(p => p.style.display = 'none');
+    }
+  }, true);
+}
+
+// ── filterCommsOcMSOptions — filtra opciones visibles dentro de un panel MS ──
+// Permite buscar por texto dentro del dropdown multi-select (campaña, etc.)
+function filterCommsOcMSOptions(panelId, searchTerm) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  const term = searchTerm.toLowerCase();
+  panel.querySelectorAll('.coc-ms-opt[data-val]').forEach(opt => {
+    opt.style.display = (term === '' || (opt.dataset.val || '').includes(term)) ? '' : 'none';
+  });
+}
+
+// ── onCommsOcFilterChange — lee checkboxes y text input, aplica filtros ──────
+// §75: schema actualizado — fuente/clasif en lugar de app/typename/title/text
+function onCommsOcFilterChange() {
+  const msIds = ['comms-f-fecha','comms-f-fuente','comms-f-canal','comms-f-strategy',
+                 'comms-f-substrat','comms-f-clasif','comms-f-notiftype','comms-f-team',
+                 'comms-f-bl','comms-f-bizseg','comms-f-enfoque','comms-f-experiment',
+                 'comms-f-corpsubcanal','comms-f-corpsubcanalaux',
+                 'comms-f-fmsubcanal','comms-f-fmsubcanalaux','comms-f-mediofinal','comms-f-campaign'];
+  msIds.forEach(id => updateCommsOcMSLabel(id));
+
+  _commsOcFilterState.fecha      = getCommsOcMSValues('comms-f-fecha');
+  _commsOcFilterState.fuente     = getCommsOcMSValues('comms-f-fuente');
+  _commsOcFilterState.canal      = getCommsOcMSValues('comms-f-canal');
+  _commsOcFilterState.strategy   = getCommsOcMSValues('comms-f-strategy');
+  _commsOcFilterState.substrat   = getCommsOcMSValues('comms-f-substrat');
+  _commsOcFilterState.clasif     = getCommsOcMSValues('comms-f-clasif');
+  _commsOcFilterState.notiftype  = getCommsOcMSValues('comms-f-notiftype');
+  _commsOcFilterState.team       = getCommsOcMSValues('comms-f-team');
+  _commsOcFilterState.bl         = getCommsOcMSValues('comms-f-bl');
+  _commsOcFilterState.bizseg     = getCommsOcMSValues('comms-f-bizseg');
+  _commsOcFilterState.enfoque         = getCommsOcMSValues('comms-f-enfoque');
+  _commsOcFilterState.experiment      = getCommsOcMSValues('comms-f-experiment');
+  _commsOcFilterState.corpsubcanal    = getCommsOcMSValues('comms-f-corpsubcanal');
+  _commsOcFilterState.corpsubcanalaux = getCommsOcMSValues('comms-f-corpsubcanalaux');
+  _commsOcFilterState.fmsubcanal      = getCommsOcMSValues('comms-f-fmsubcanal');
+  _commsOcFilterState.fmsubcanalaux   = getCommsOcMSValues('comms-f-fmsubcanalaux');
+  _commsOcFilterState.mediofinal      = getCommsOcMSValues('comms-f-mediofinal');
+  _commsOcFilterState.campaign        = getCommsOcMSValues('comms-f-campaign');
+
+  applyCommsOcFilters();
+}
+
+// ── applyCommsOcFilters — aplica TODOS los filtros activos (AND logic) ────────
+// Multi-select: Set vacío = sin filtro. OR dentro del Set (cualquier valor seleccionado basta).
+// '__EMPTY__' en el Set filtra filas donde el campo está vacío/en blanco.
+function applyCommsOcFilters() {
+  const f = _commsOcFilterState;
+  const allRows = document.querySelectorAll('#pane-comms-oc tr[data-month]');
+
+  // Exacto: app, canal, team — el valor del campo debe estar en el Set.
+  const msExact = (fieldVal, sel) => {
+    if (sel.size === 0) return true;
+    const empty = !fieldVal || fieldVal.trim() === '';
+    if (empty) return sel.has('__EMPTY__');
+    return sel.has(fieldVal);
+  };
+
+  // STRING_AGG: al menos uno de los valores del Set debe estar contenido en el campo.
+  // '__EMPTY__' pasa si el campo está vacío.
+  const msAgg = (fieldVal, sel) => {
+    if (sel.size === 0) return true;
+    const empty = !fieldVal || fieldVal.trim() === '';
+    for (const v of sel) {
+      if (v === '__EMPTY__') { if (empty) return true; }
+      else if (!empty && (fieldVal || '').includes(v)) return true;
+    }
+    return false;
+  };
+
+  // §75: schema actualizado — exactos directos (no STRING_AGG)
+  allRows.forEach(row => {
+    const d = row.dataset;
+    const monthOk     = !f.month || d.month === f.month;
+    const fechaOk     = msExact(d.fecha,     f.fecha);
+    const fuenteOk    = msExact(d.fuente,    f.fuente);
+    const canalOk     = msExact(d.canal,     f.canal);
+    const stratOk     = msExact(d.strategy,  f.strategy);
+    const substratOk  = msExact(d.substrat,  f.substrat);
+    const clasifOk    = msExact(d.clasif,    f.clasif);
+    const notiftypeOk = msExact(d.notiftype, f.notiftype);
+    const teamOk      = msExact(d.team,      f.team);
+    const blOk           = msExact(d.bl,           f.bl);
+    const bizsegOk       = msExact(d.bizseg,       f.bizseg);
+    const enfoqueOk      = msExact(d.enfoque,      f.enfoque);
+    const experimentOk   = msExact(d.experiment,   f.experiment);
+    const corpsubcanalOk    = msExact(d.corpsubcanal,    f.corpsubcanal);
+    const corpsubcanalAuxOk = msExact(d.corpsubcanalaux, f.corpsubcanalaux);
+    const fmsubcanalOk      = msExact(d.fmsubcanal,      f.fmsubcanal);
+    const fmsubcanalAuxOk   = msExact(d.fmsubcanalaux,   f.fmsubcanalaux);
+    const medioFinalOk      = msExact(d.mediofinal,      f.mediofinal);
+    const campaignOk        = msExact(d.campaign,        f.campaign);
+
+    row.style.display = (monthOk && fechaOk && fuenteOk && canalOk && stratOk && substratOk
+                         && clasifOk && notiftypeOk && teamOk && blOk && bizsegOk
+                         && enfoqueOk && experimentOk
+                         && corpsubcanalOk && corpsubcanalAuxOk
+                         && fmsubcanalOk && fmsubcanalAuxOk
+                         && medioFinalOk && campaignOk) ? '' : 'none';
+  });
+
+  renderCommsOcKPIs();
+}
+
+// ── clearCommsOcFilters — resetea todos los filtros salvo el mes global ───────
+// §75: schema actualizado
+function clearCommsOcFilters() {
+  const msIds = ['comms-f-fecha','comms-f-fuente','comms-f-canal','comms-f-strategy',
+                 'comms-f-substrat','comms-f-clasif','comms-f-notiftype','comms-f-team',
+                 'comms-f-bl','comms-f-bizseg','comms-f-enfoque','comms-f-experiment',
+                 'comms-f-corpsubcanal','comms-f-corpsubcanalaux',
+                 'comms-f-fmsubcanal','comms-f-fmsubcanalaux','comms-f-mediofinal','comms-f-campaign'];
+  msIds.forEach(id => {
+    const panel = document.getElementById(id + '-panel');
+    if (panel) panel.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    updateCommsOcMSLabel(id);
+  });
+  const campEl = document.getElementById('comms-f-campaign');
+  if (campEl) campEl.value = '';
+
+  _commsOcFilterState.fecha = _commsOcFilterState.fuente = _commsOcFilterState.canal = new Set();
+  _commsOcFilterState.strategy = _commsOcFilterState.substrat = _commsOcFilterState.clasif = new Set();
+  _commsOcFilterState.notiftype = _commsOcFilterState.team = new Set();
+  _commsOcFilterState.bl = _commsOcFilterState.bizseg = new Set();
+  _commsOcFilterState.enfoque = _commsOcFilterState.experiment = new Set();
+  _commsOcFilterState.corpsubcanal = _commsOcFilterState.corpsubcanalaux = new Set();
+  _commsOcFilterState.fmsubcanal = _commsOcFilterState.fmsubcanalaux = new Set();
+  _commsOcFilterState.mediofinal = new Set();
+  _commsOcFilterState.campaign = new Set();
+
+  applyCommsOcFilters();
+}
+
+// ── filterCommsOcByMonth — Filtro de mes para la tabla Comms_OC ──────────────
+// Actualiza el estado del filtro de mes y delega a applyCommsOcFilters()
+// para que los demás filtros activos (APP, CANAL, etc.) se respeten también.
+// Llamada desde onMonthChange() e initTab('comms-oc').
+function filterCommsOcByMonth(selectedMonthYYYYMM) {
+  const allCommsOcTableRows = document.querySelectorAll('#pane-comms-oc [data-month]');
+
+  // filterCommsOcByMonth: actualiza el estado del filtro de mes y aplica todos los filtros.
+  // No filtra directamente — delega a applyCommsOcFilters() para mantener consistencia
+  // con los demás filtros activos (APP, CANAL, STRATEGY, etc.).
+  _commsOcFilterState.month = selectedMonthYYYYMM || '';
+  applyCommsOcFilters();
+}
+
+// ── HELPERS COMPARTIDOS (NR Diario Acumulado + NR Diario) ─────
+function getPriorMonths(month, n) {
+  let y = parseInt(month.slice(0,4)), m = parseInt(month.slice(4));
+  const result = [];
+  for (let i=0; i<n; i++) {
+    m--; if (m===0) { m=12; y--; }
+    const pm = String(y).padStart(4,'0') + String(m).padStart(2,'0');
+    if (D.months.includes(pm)) result.push(pm);
+  }
+  return result;
+}
+
+function computeAvg(canal, month, n) {
+  const priors = getPriorMonths(month, n);
+  const dayData = (D.daily_cum[canal] || {})[month] || {};
+  const days = Object.keys(dayData).map(Number).sort((a,b) => a-b);
+  const avg = {};
+  days.forEach(d => {
+    const vals = priors
+      .map(pm => ((D.daily_cum[canal] || {})[pm] || {})[d])
+      .filter(v => v != null);
+    avg[d] = vals.length ? vals.reduce((s,v) => s+v, 0) / vals.length : null;
+  });
+  return avg;
+}
+
+function getChannelsForCanal(canal) {
+  if (!canal || canal === 'Total N+R') {
+    return D.labels.filter((l, i) => D.indents[i] === 0);
+  }
+  return [canal];
+}
+
+// ── NR DIARIO ACUMULADO ───────────────────────────────────────
+function renderDynamic(tab) {
+  const month = document.getElementById('monthSel').value;
+  if (tab === 'nr-diario-acum') renderNRDiarioAcum(month);
+  if (tab === 'nr-diario')      renderNRDiario(month);
+}
+
+function renderNRDiarioAcum(month) {
+  const canal  = document.getElementById('canalSel').value;
+  const nPrior = parseInt(document.getElementById('nPriorSlider').value);
+  renderKPIsNRDiarioAcum(month, canal, nPrior);
+  renderChartNRDiarioAcum(month);
+  const channels = getChannelsForCanal(canal);
+  const traces = [];
+
+  channels.forEach(ch => {
+    const dayData = (D.daily_cum[ch] || {})[month] || {};
+    const days = Object.keys(dayData).map(Number).sort((a,b) => a-b);
+    if (!days.length) return;
+    const vals    = days.map(d => (dayData[d] || 0) / 1000);
+    const avgData = computeAvg(ch, month, nPrior);
+    const avgVals = days.map(d => avgData[d] != null ? avgData[d]/1000 : null);
+    const color   = D.label_colors[ch] || '#888';
+
+    traces.push({
+      x: days, y: vals, name: ch, mode: 'lines',
+      line: {color: color, width: 2.5},
+    });
+    if (avgVals.some(v => v !== null)) {
+      traces.push({
+        x: days, y: avgVals, name: ch + ' (prom ' + nPrior + 'm)',
+        mode: 'lines', opacity: 0.5, showlegend: true,
+        line: {color: color, width: 1.5, dash: 'dash'},
+      });
+    }
+  });
+
+  const layout = {
+    title: 'Acumulado Diario — ' + D.month_labels[month]
+         + '  (- - prom ' + nPrior + ' meses prev)',
+    xaxis: {title: 'Dia del mes', dtick: 5, showgrid: false},
+    yaxis: {title: 'N+R Acumulado (miles)', tickformat:',.0f', ticksuffix:'K', showgrid: false},
+    height: 300,
+    plot_bgcolor: 'white', paper_bgcolor: 'white',
+    legend: {orientation:'h', y:-0.42, font:{size:9}},
+    margin: {l:70,r:20,t:50,b:110},
+  };
+  Plotly.newPlot('chart-nr-diario-acum-line', traces, layout, {responsive:true});
+  renderTableNRDiarioAcum(month, canal, nPrior);
+}
+
+// ── NR DIARIO ACUMULADO — Tabla (valor acumulado + vs prom) ──
+function renderTableNRDiarioAcum(month, canal, nPrior) {
+  const wrap = document.getElementById('tbl-nr-diario-acum');
+  if (!wrap) return;
+  const priors = getPriorMonths(month, nPrior);
+
+  const allDays = new Set();
+  D.labels.forEach(ch => {
+    Object.keys((D.daily_cum[ch] || {})[month] || {}).forEach(d => allDays.add(Number(d)));
+  });
+  const days = Array.from(allDays).sort((a,b) => a-b);
+  if (!days.length) { wrap.innerHTML = ''; return; }
+
+  const CLS = {
+    'grand': ['background:#1a2744;color:#fff;font-weight:700', 'background:#111d38;color:#9db4d0'],
+    'sub1':  ['background:#2d5986;color:#fff;font-weight:600', 'background:#1e4570;color:#c0d8f0'],
+    'sub2':  ['background:#4a7ab5;color:#fff;font-weight:500', 'background:#3a6898;color:#d0e4f8'],
+    'leaf':  ['background:#fff;color:#333',                    'background:#fafafa;color:#666'],
+  };
+
+  function fmtVal(v) {
+    if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
+    if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+    return Number(v).toFixed(0);
+  }
+  function fmtPct(v, dark) {
+    if (v === null || v === undefined) return '<span style="color:'+(dark?'#667':'#ccc')+'">—</span>';
+    const pos = dark ? '#81c995' : '#0d7a3e';
+    const neg = dark ? '#f28b82' : '#c5221f';
+    const pct = (Math.abs(v)*100).toFixed(1)+'%';
+    if (v >= 0) return '<span style="color:'+pos+';font-weight:600">&#9650;'+pct+'</span>';
+    return '<span style="color:'+neg+';font-weight:600">&#9660;'+pct+'</span>';
+  }
+
+  const DOW_ES = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
+  let html = '<div class="day-tbl-wrap"><table class="day-tbl"><thead><tr>';
+  html += '<th class="lbl-col">Canal / D&iacute;a</th>';
+  days.forEach(d => { html += '<th>'+d+'</th>'; });
+  html += '</tr><tr>';
+  html += '<th class="lbl-col" style="font-weight:400;font-style:italic;font-size:10px;opacity:0.75"></th>';
+  days.forEach(d => {
+    const dow = new Date(parseInt(month.slice(0,4)), parseInt(month.slice(4))-1, d).getDay();
+    const isWknd = dow === 0 || dow === 6;
+    html += '<th style="font-weight:400;font-size:10px;color:'+(isWknd?'#f28b82':'#c8d8f0')+'">'+DOW_ES[dow]+'</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  D.labels.forEach((label, i) => {
+    const cls    = D.classes[i];
+    const indent = D.indents[i];
+    const rowS   = CLS[cls][0];
+    const metS   = CLS[cls][1];
+    const dark   = cls !== 'leaf';
+    const pad    = 'padding-left:'+(indent*14+10)+'px';
+    const hlCls  = (canal && canal !== '' && canal === label) ? ' row-highlighted' : '';
+
+    // Fila valor acumulado
+    html += '<tr data-canal="'+label+'" class="'+hlCls+'">';
+    html += '<td class="lbl-col" style="'+pad+';'+rowS+'">'+label+'</td>';
+    days.forEach(d => {
+      const v = ((D.daily_cum[label] || {})[month] || {})[d];
+      html += '<td style="'+rowS+'">'+(v != null ? fmtVal(v) : '<span style="color:#aaa">—</span>')+'</td>';
+    });
+    html += '</tr>';
+
+    // Fila vs promedio
+    html += '<tr><td class="lbl-col" style="padding-left:'+((indent+1)*14+10)+'px;'+metS+';font-style:italic;font-size:10px">vs Prom '+nPrior+'m</td>';
+    days.forEach(d => {
+      const cum = ((D.daily_cum[label] || {})[month] || {})[d];
+      let vsPct = null;
+      if (cum != null) {
+        const vals = priors.map(pm => ((D.daily_cum[label] || {})[pm] || {})[d]).filter(v => v != null);
+        const avg  = vals.length ? vals.reduce((s,v) => s+v, 0) / vals.length : null;
+        vsPct = (avg && avg > 0) ? (cum - avg) / avg : null;
+      }
+      html += '<td style="'+metS+';font-size:10px">'+fmtPct(vsPct, dark)+'</td>';
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+
+  // Filtrar filas por canal seleccionado (respetando jerarquía)
+  const filterCanal = document.getElementById('canalSel').value;
+  if (filterCanal && filterCanal !== 'Total N+R') {
+    const showSet = new Set(['Total N+R']);
+    const fIdx = D.labels.indexOf(filterCanal);
+    if (fIdx >= 0) {
+      showSet.add(filterCanal);
+      const baseInd = D.indents[fIdx];
+      for (let i = fIdx + 1; i < D.labels.length; i++) {
+        if (D.indents[i] > baseInd) showSet.add(D.labels[i]);
+        else break;
+      }
+    }
+    let lastVis = false;
+    wrap.querySelectorAll('.day-tbl tbody tr').forEach(tr => {
+      if (tr.hasAttribute('data-canal')) {
+        lastVis = showSet.has(tr.getAttribute('data-canal'));
+        tr.style.display = lastVis ? '' : 'none';
+      } else {
+        tr.style.display = lastVis ? '' : 'none';
+      }
+    });
+  }
+}
+
+// ── DAILY KPI CARDS (tab NR Diario — NR diario del último día) ───
+function renderKPIsNRDiario(month, canal, nPrior) {
+  const row = document.getElementById('kpi-row-nr-diario');
+  if (!row) return;
+  const priors = getPriorMonths(month, nPrior);
+  const clsMap = {};
+  D.labels.forEach((l, i) => { clsMap[l] = D.classes[i]; });
+
+  const days = Object.keys((D.daily_cum['Total N+R'] || {})[month] || {})
+    .map(Number).sort((a,b) => a-b);
+  const lastDay = days.slice(-1)[0] || null;
+
+  // Para el mes actual usar hoy-2; para meses pasados usar el último día disponible
+  const today      = new Date();
+  const curYYYYMM  = String(today.getFullYear()) + String(today.getMonth()+1).padStart(2,'0');
+  let refDay = lastDay;
+  if (month === curYYYYMM && lastDay != null) {
+    const d2 = new Date(today); d2.setDate(today.getDate() - 2);
+    const d2num = d2.getDate();
+    const monthData = (D.daily_cum['Total N+R'] || {})[month] || {};
+    refDay = monthData[String(d2num)] != null ? d2num : lastDay;
+  }
+
+  // Lógica jerárquica: canal + hijos leaf
+  let rows;
+  if (!canal || canal === 'Total N+R') {
+    rows = D.labels.slice(0,4).map((l,i) => ({label:l, cls:D.classes[i]}));
+  } else {
+    rows = [{label:'Total N+R', cls:D.classes[0]}, {label:canal, cls:clsMap[canal]||'leaf'}];
+    const idx = D.labels.indexOf(canal);
+    if (idx >= 0) {
+      const baseIndent = D.indents[idx];
+      for (let i = idx + 1; i < D.labels.length; i++) {
+        if (D.indents[i] > baseIndent) {
+          if (D.classes[i] === 'leaf') rows.push({label:D.labels[i], cls:'leaf'});
+        } else break;
+      }
+    }
+  }
+
+  row.innerHTML = rows.map(r => {
+    // NR diario del día de referencia (hoy-2 para mes actual, último día para meses pasados)
+    const val   = refDay != null ? (getDailyNR(r.label, month, refDay) || 0) : 0;
+    const avg   = refDay != null ? (() => {
+      const vals = priors.map(pm => getDailyNR(r.label, pm, refDay)).filter(v => v != null);
+      return vals.length ? vals.reduce((s,v) => s+v, 0) / vals.length : null;
+    })() : null;
+    const vsPct = (avg && avg > 0 && val > 0) ? (val - avg) / avg : null;
+    const dark  = r.cls !== 'leaf';
+    const pos   = dark ? '#81c995' : '#0d7a3e';
+    const neg   = dark ? '#f28b82' : '#c5221f';
+    let vsHtml  = '';
+    if (vsPct !== null) {
+      const pct = (Math.abs(vsPct)*100).toFixed(1)+'% vs prom '+nPrior+'m';
+      vsHtml = '<span style="color:'+(vsPct>=0?pos:neg)+';font-weight:600">'
+             + (vsPct>=0?'&#9650;':'&#9660;')+pct+'</span>';
+    }
+    return '<div class="kpi-card kpi-'+r.cls+'">'
+      +'<div class="kpi-label">'+r.label+(refDay?' &mdash; d&iacute;a '+refDay:'')+'</div>'
+      +'<div class="kpi-val">'+fmtValKPI(val)+'</div>'
+      +'<div class="kpi-mom">'+vsHtml+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// ── KPI CARDS NR DIARIO ACUMULADO ────────────────────────────────
+function renderKPIsNRDiarioAcum(month, canal, nPrior) {
+  const row = document.getElementById('kpi-row-nr-diario-acum');
+  if (!row) return;
+  const priors  = getPriorMonths(month, nPrior);
+  const clsMap  = {};
+  D.labels.forEach((l, i) => { clsMap[l] = D.classes[i]; });
+
+  const lastDay = Object.keys((D.daily_cum['Total N+R'] || {})[month] || {})
+    .map(Number).sort((a,b) => a-b).slice(-1)[0] || null;
+
+  let rows;
+  if (!canal || canal === 'Total N+R') {
+    rows = D.labels.slice(0,4).map((l,i) => ({label:l, cls:D.classes[i]}));
+  } else {
+    rows = [{label:'Total N+R', cls:D.classes[0]}, {label:canal, cls:clsMap[canal]||'leaf'}];
+    const idx = D.labels.indexOf(canal);
+    if (idx >= 0) {
+      const baseIndent = D.indents[idx];
+      for (let i = idx + 1; i < D.labels.length; i++) {
+        if (D.indents[i] > baseIndent) {
+          if (D.classes[i] === 'leaf') rows.push({label:D.labels[i], cls:'leaf'});
+        } else break;
+      }
+    }
+  }
+
+  row.innerHTML = rows.map(r => {
+    const val = lastDay != null ? (((D.daily_cum[r.label] || {})[month] || {})[String(lastDay)] || 0) : 0;
+    const avgVal = lastDay != null ? (() => {
+      const vals = priors.map(pm => ((D.daily_cum[r.label] || {})[pm] || {})[String(lastDay)]).filter(v => v != null);
+      return vals.length ? vals.reduce((s,v) => s+v, 0) / vals.length : null;
+    })() : null;
+    const vsPct = (avgVal && avgVal > 0 && val > 0) ? (val - avgVal) / avgVal : null;
+    const dark  = r.cls !== 'leaf';
+    const pos   = dark ? '#81c995' : '#0d7a3e';
+    const neg   = dark ? '#f28b82' : '#c5221f';
+    let vsHtml  = '';
+    if (vsPct !== null) {
+      const pct = (Math.abs(vsPct)*100).toFixed(1)+'% vs prom '+nPrior+'m';
+      vsHtml = '<span style="color:'+(vsPct>=0?pos:neg)+';font-weight:600">'
+             + (vsPct>=0?'&#9650;':'&#9660;')+pct+'</span>';
+    }
+    return '<div class="kpi-card kpi-'+r.cls+'">'
+      +'<div class="kpi-label">'+r.label+(lastDay?' &mdash; acum. d&iacute;a '+lastDay:'')+'</div>'
+      +'<div class="kpi-val">'+fmtValKPI(val)+'</div>'
+      +'<div class="kpi-mom">'+vsHtml+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// ── NR DIARIO — Helper + Tabla (NR diario + % vs prom) ───────
+function getDailyNR(ch, month, d) {
+  const m = (D.daily_cum[ch] || {})[month] || {};
+  const cur  = m[d]   != null ? m[d]   : null;
+  const prev = m[d-1] != null ? m[d-1] : null;
+  if (cur == null) return null;
+  return (d == 1 || prev == null) ? cur : cur - prev;
+}
+
+function renderTableNRDiario(month) {
+  const wrap = document.getElementById('tbl-nr-diario');
+  if (!wrap) return;
+  const sliderEl = document.getElementById('nPriorSlider');
+  const nPrior   = sliderEl ? parseInt(sliderEl.value) : D.n_prior;
+  const canal    = document.getElementById('canalSel').value;
+  const priors   = getPriorMonths(month, nPrior);
+
+  const allDays = new Set();
+  D.labels.forEach(ch => {
+    Object.keys((D.daily_cum[ch] || {})[month] || {}).forEach(d => allDays.add(Number(d)));
+  });
+  const days = Array.from(allDays).sort((a,b) => a-b);
+  if (!days.length) { wrap.innerHTML = ''; return; }
+
+  const CLS = {
+    'grand': ['background:#1a2744;color:#fff;font-weight:700', 'background:#111d38;color:#9db4d0'],
+    'sub1':  ['background:#2d5986;color:#fff;font-weight:600', 'background:#1e4570;color:#c0d8f0'],
+    'sub2':  ['background:#4a7ab5;color:#fff;font-weight:500', 'background:#3a6898;color:#d0e4f8'],
+    'leaf':  ['background:#fff;color:#333',                    'background:#fafafa;color:#666'],
+  };
+  function fmtVal(v) {
+    if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
+    if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+    return Number(v).toFixed(0);
+  }
+  function fmtPct(v, dark) {
+    if (v === null || v === undefined) return '<span style="color:'+(dark?'#667':'#ccc')+'">&#8212;</span>';
+    const pos = dark ? '#81c995' : '#0d7a3e';
+    const neg = dark ? '#f28b82' : '#c5221f';
+    const pct = (Math.abs(v)*100).toFixed(1)+'%';
+    if (v >= 0) return '<span style="color:'+pos+';font-weight:600">&#9650;'+pct+'</span>';
+    return '<span style="color:'+neg+';font-weight:600">&#9660;'+pct+'</span>';
+  }
+
+  const DOW_ES = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
+  let html = '<div class="day-tbl-wrap"><table class="day-tbl"><thead><tr>';
+  html += '<th class="lbl-col">Canal / D&iacute;a</th>';
+  days.forEach(d => { html += '<th>'+d+'</th>'; });
+  html += '</tr><tr>';
+  html += '<th class="lbl-col" style="font-weight:400;font-style:italic;font-size:10px;opacity:0.75"></th>';
+  days.forEach(d => {
+    const dow = new Date(parseInt(month.slice(0,4)), parseInt(month.slice(4))-1, d).getDay();
+    const isWknd = dow === 0 || dow === 6;
+    html += '<th style="font-weight:400;font-size:10px;color:'+(isWknd?'#f28b82':'#c8d8f0')+'">'+DOW_ES[dow]+'</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  D.labels.forEach((label, i) => {
+    const cls    = D.classes[i];
+    const indent = D.indents[i];
+    const rowS   = CLS[cls][0];
+    const metS   = CLS[cls][1];
+    const dark   = cls !== 'leaf';
+    const pad    = 'padding-left:'+(indent*14+10)+'px';
+    const hlCls  = (canal && canal !== '' && canal === label) ? ' row-highlighted' : '';
+
+    html += '<tr data-canal="'+label+'" class="'+hlCls+'">';
+    html += '<td class="lbl-col" style="'+pad+';'+rowS+'">'+label+'</td>';
+    days.forEach(d => {
+      const v = getDailyNR(label, month, d);
+      html += '<td style="'+rowS+'">'+(v != null ? fmtVal(v) : '<span style="color:#aaa">&#8212;</span>')+'</td>';
+    });
+    html += '</tr>';
+
+    html += '<tr><td class="lbl-col" style="padding-left:'+((indent+1)*14+10)+'px;'+metS+';font-style:italic;font-size:10px">vs Prom '+nPrior+'m</td>';
+    days.forEach(d => {
+      const cur = getDailyNR(label, month, d);
+      let vsPct = null;
+      if (cur != null) {
+        const vals = priors.map(pm => getDailyNR(label, pm, d)).filter(v => v != null);
+        const avg  = vals.length ? vals.reduce((s,v) => s+v, 0) / vals.length : null;
+        vsPct = (avg && avg > 0) ? (cur - avg) / avg : null;
+      }
+      html += '<td style="'+metS+';font-size:10px">'+fmtPct(vsPct, dark)+'</td>';
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+
+  if (canal && canal !== 'Total N+R') {
+    const showSet = new Set(['Total N+R']);
+    const fIdx = D.labels.indexOf(canal);
+    if (fIdx >= 0) {
+      showSet.add(canal);
+      const baseInd = D.indents[fIdx];
+      for (let i = fIdx + 1; i < D.labels.length; i++) {
+        if (D.indents[i] > baseInd) showSet.add(D.labels[i]);
+        else break;
+      }
+    }
+    let lastVis = false;
+    wrap.querySelectorAll('.day-tbl tbody tr').forEach(tr => {
+      if (tr.hasAttribute('data-canal')) {
+        lastVis = showSet.has(tr.getAttribute('data-canal'));
+        tr.style.display = lastVis ? '' : 'none';
+      } else {
+        tr.style.display = lastVis ? '' : 'none';
+      }
+    });
+  }
+}
+
+// ── DAILY BAR CHART (barras apiladas ACUMULADAS, usado en NR Diario Acumulado) ──
+function renderChartNRDiarioAcum(month) {
+  const sliderEl = document.getElementById('nPriorSlider');
+  const nPrior   = sliderEl ? parseInt(sliderEl.value) : D.n_prior;
+  const canal    = document.getElementById('canalSel').value;
+
+  const allDays = new Set();
+  D.labels.forEach(ch => {
+    Object.keys((D.daily_cum[ch] || {})[month] || {}).forEach(d => allDays.add(Number(d)));
+  });
+  const days = Array.from(allDays).sort((a,b) => a-b);
+  if (!days.length) return;
+
+  const toShow = getLeafNRToHL(canal);
+
+  function fmtAnn(v) {
+    if (v >= 1e6) return (v/1e6).toFixed(1)+'M';
+    if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+    return v.toFixed(0);
+  }
+  function fmtHov(v) {
+    if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
+    if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+    return Number(v).toFixed(0);
+  }
+
+  const lastDay = days[days.length - 1];
+  const sortedLeafs = [...D.leaf_labels].sort((a, b) => {
+    const totA = ((D.daily_cum[a] || {})[month] || {})[String(lastDay)] || 0;
+    const totB = ((D.daily_cum[b] || {})[month] || {})[String(lastDay)] || 0;
+    return totB - totA;
+  });
+
+  const traces = sortedLeafs.map(leaf => {
+    const color   = D.label_colors[leaf] || '#888';
+    const cumVals = days.map(d => ((D.daily_cum[leaf] || {})[month] || {})[String(d)] || 0);
+    return {
+      type: 'bar', name: leaf,
+      x: days, y: cumVals.map(v => v/1000),
+      customdata: cumVals.map(fmtHov),
+      hovertemplate: '%{fullData.name}: %{customdata}<extra></extra>',
+      visible: toShow.includes(leaf) ? true : false,
+      marker: {color: color},
+    };
+  });
+
+  const cprVals = days.map((d, i) => {
+    let totalNRday = 0, totalCostDay = 0;
+    toShow.forEach(leaf => {
+      const cumM  = (D.daily_cum[leaf]  || {})[month] || {};
+      const costM = (D.daily_cost[leaf] || {})[month] || {};
+      const cumD  = cumM[String(d)]        || 0;
+      const cumPrev = i > 0 ? (cumM[String(days[i-1])] || 0) : 0;
+      totalNRday   += (i === 0) ? cumD : cumD - cumPrev;
+      totalCostDay += costM[String(d)] || 0;
+    });
+    return totalNRday > 0 ? totalCostDay / totalNRday : null;
+  });
+  const hasCPA = cprVals.some(v => v !== null && v > 0);
+  if (hasCPA) {
+    traces.push({
+      type: 'scatter', name: 'CPA (USD)',
+      x: days, y: cprVals,
+      yaxis: 'y2', mode: 'lines+markers',
+      line: {color: '#E9C46A', width: 2.5, dash: 'dash'},
+      marker: {size: 6, symbol: 'diamond', color: '#E9C46A'},
+      customdata: cprVals.map(v => v != null ? '$' + v.toFixed(2) : '—'),
+      hovertemplate: 'CPA: %{customdata}<extra></extra>',
+    });
+  }
+
+  const avgPrevVals = days.map(d => {
+    const vals = toShow.map(leaf => {
+      const v = ((D.avg_cum[leaf] || {})[month] || {})[String(d)];
+      return v != null ? v : null;
+    }).filter(v => v !== null);
+    return vals.length ? vals.reduce((a,b) => a+b, 0) : null;
+  });
+  if (avgPrevVals.some(v => v !== null)) {
+    traces.push({
+      type: 'scatter', name: 'Prom. ' + nPrior + 'm prev.',
+      x: days, y: avgPrevVals.map(v => v != null ? v/1000 : null),
+      mode: 'lines', connectgaps: false,
+      line: {color: '#555555', width: 1.5, dash: 'dash'},
+      hovertemplate: 'Prom. acum.: %{y:.1f}K<extra></extra>',
+      showlegend: true,
+    });
+  }
+
+  const annotations = days.map(d => {
+    const total = toShow.reduce((s, leaf) => {
+      return s + (((D.daily_cum[leaf] || {})[month] || {})[String(d)] || 0);
+    }, 0);
+    return {
+      x: d, y: total/1000,
+      text: fmtAnn(total),
+      showarrow: false, yanchor: 'bottom', yshift: 3,
+      font: {size: 8, color: '#333'}
+    };
+  });
+
+  const layout = {
+    title: 'N+R Acumulado Diario — ' + D.month_labels[month],
+    barmode: 'stack',
+    xaxis: {title: 'Dia del mes', dtick: 1, tickfont: {size:10}, showgrid: false},
+    yaxis: {title: 'N+R Acumulado (miles)', tickformat:',.0f', ticksuffix:'K', showgrid: false},
+    yaxis2: hasCPA ? {title:'CPA (USD)', side:'right', overlaying:'y', showgrid:false, tickformat:'$,.2f'} : {},
+    height: 480,
+    hovermode: 'x unified',
+    plot_bgcolor: 'white', paper_bgcolor: 'white',
+    legend: {orientation:'h', y:-0.18, font:{size:10}},
+    margin: {l:70, r:70, t:50, b:90},
+    annotations: annotations,
+  };
+  Plotly.newPlot('chart-nr-diario-acum-bar', traces, layout, {responsive:true});
+}
+
+// ── NR DIARIO — Chart + KPIs ─────────────────────────────────
+function renderNRDiario(month) {
+  const sliderEl = document.getElementById('nPriorSlider');
+  const nPrior   = sliderEl ? parseInt(sliderEl.value) : D.n_prior;
+  const canal    = document.getElementById('canalSel').value;
+  renderKPIsNRDiario(month, canal, nPrior);
+
+  const allDays = new Set();
+  D.labels.forEach(ch => {
+    Object.keys((D.daily_cum[ch] || {})[month] || {}).forEach(d => allDays.add(Number(d)));
+  });
+  const days = Array.from(allDays).sort((a,b) => a-b);
+  if (!days.length) { renderTableNRDiario(month); return; }
+
+  const toShow = getLeafNRToHL(canal);
+
+  function fmtAnn(v) {
+    if (v >= 1e6) return (v/1e6).toFixed(1)+'M';
+    if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+    return v.toFixed(0);
+  }
+  function fmtHov(v) {
+    if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
+    if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+    return Number(v).toFixed(0);
+  }
+
+  const sortedLeafs = [...D.leaf_labels].sort((a, b) => {
+    const totA = days.reduce((s, d) => s + (getDailyNR(a, month, d) || 0), 0);
+    const totB = days.reduce((s, d) => s + (getDailyNR(b, month, d) || 0), 0);
+    return totB - totA;
+  });
+
+  const traces = sortedLeafs.map(leaf => {
+    const color   = D.label_colors[leaf] || '#888';
+    const rawVals = days.map(d => { const v = getDailyNR(leaf, month, d); return v != null ? v : 0; });
+    return {
+      type: 'bar', name: leaf,
+      x: days, y: rawVals.map(v => v/1000),
+      customdata: rawVals.map(fmtHov),
+      hovertemplate: '%{fullData.name}: %{customdata}<extra></extra>',
+      visible: toShow.includes(leaf) ? true : false,
+      marker: {color: color},
+    };
+  });
+
+  const cprVals = days.map(d => {
+    let totalNR   = 0, totalCost = 0;
+    toShow.forEach(leaf => {
+      const nr   = getDailyNR(leaf, month, d) || 0;
+      const cost = ((D.daily_cost[leaf] || {})[month] || {})[d] || 0;
+      totalNR   += nr;
+      totalCost += cost;
+    });
+    return totalNR > 0 ? totalCost / totalNR : null;
+  });
+  const hasCPA = cprVals.some(v => v !== null && v > 0);
+  if (hasCPA) {
+    traces.push({
+      type: 'scatter', name: 'CPA (USD)',
+      x: days, y: cprVals,
+      yaxis: 'y2', mode: 'lines+markers',
+      line: {color: '#E9C46A', width: 2.5, dash: 'dash'},
+      marker: {size: 6, symbol: 'diamond', color: '#E9C46A'},
+      customdata: cprVals.map(v => v != null ? '$' + v.toFixed(2) : '—'),
+      hovertemplate: 'CPA: %{customdata}<extra></extra>',
+    });
+  }
+
+  const avgPrevVals = days.map(d => {
+    const vals = toShow.map(leaf => {
+      const avgM = (D.avg_cum[leaf] || {})[month] || {};
+      const cur  = avgM[String(d)]   != null ? avgM[String(d)]   : null;
+      const prev = avgM[String(d-1)] != null ? avgM[String(d-1)] : null;
+      if (cur == null) return null;
+      const daily = (d === 1 || prev == null) ? cur : cur - prev;
+      return daily > 0 ? daily : null;
+    }).filter(v => v !== null);
+    if (!vals.length) return null;
+    return vals.reduce((a, b) => a + b, 0);
+  });
+  const hasAvgPrev = avgPrevVals.some(v => v !== null);
+  if (hasAvgPrev) {
+    traces.push({
+      type: 'scatter', name: 'Prom. ' + nPrior + 'm prev.',
+      x: days, y: avgPrevVals.map(v => v != null ? v / 1000 : null),
+      mode: 'lines', connectgaps: false,
+      line: {color: '#555555', width: 1.5, dash: 'dash'},
+      hovertemplate: 'Prom. prev.: %{y:.1f}K<extra></extra>',
+      showlegend: true,
+    });
+  }
+
+  const annotations = days.map(d => {
+    const total = toShow.reduce((s, leaf) => { const v = getDailyNR(leaf, month, d); return s + (v||0); }, 0);
+    return {
+      x: d, y: total/1000,
+      text: fmtAnn(total),
+      showarrow: false, yanchor: 'bottom', yshift: 3,
+      font: {size: 8, color: '#333'}
+    };
+  });
+
+  const layout = {
+    title: 'N+R Diarios — ' + D.month_labels[month],
+    barmode: 'stack',
+    xaxis: {title: 'Dia del mes', dtick: 1, tickfont: {size:10}, showgrid: false},
+    yaxis: {title: 'N+R (miles)', tickformat:',.0f', ticksuffix:'K', showgrid: false},
+    yaxis2: hasCPA ? {title:'CPA (USD)', side:'right', overlaying:'y', showgrid:false, tickformat:'$,.2f'} : {},
+    height: 480,
+    hovermode: 'x unified',
+    plot_bgcolor: 'white', paper_bgcolor: 'white',
+    legend: {orientation:'h', y:-0.25, font:{size:10}},
+    margin: {l:70, r:70, t:60, b:160},
+    annotations: annotations,
+  };
+  Plotly.newPlot('chart-nr-diario', traces, layout, {responsive:true});
+  renderTableNRDiario(month);
+
+  // Renderizar sección corporativa diaria (gráfica + tabla colapsable)
+  // Se llama al final para no bloquear el render del chart principal
+  renderNRCorpDailySection(month);
+}
+
+// ── PERFORMANCE — Helpers de Costos ──────────────────────────
+function getLeafCostToHL(canal) {
+  if (!canal || canal === '' || canal === 'Total Inversión') return D.cost_leaf_labels;
+  if (D.cost_leaf_labels.includes(canal)) return [canal];
+  const idx = D.cost_labels.indexOf(canal);
+  if (idx < 0) return D.cost_leaf_labels;
+  const baseIndent = D.cost_indents[idx];
+  const result = [];
+  for (let i = idx + 1; i < D.cost_labels.length; i++) {
+    if (D.cost_indents[i] <= baseIndent) break;
+    if (!D.cost_no_cost[i] && D.cost_classes[i] === 'leaf') result.push(D.cost_labels[i]);
+  }
+  return result.length ? result : D.cost_leaf_labels;
+}
+
+// ── PERFORMANCE — Chart + Tabla ──────────────────────────────
+function updateChartPerf(canal) {
+  const gd = document.getElementById('chart-perf-bar');
+  if (!gd || !gd.data) return;
+
+  const toHL    = getLeafCostToHL(canal);
+  const allCanals = (!canal || canal === '' || canal === 'Total Inversión' || canal === 'Total N+R');
+
+  const idxCpa     = gd.data.findIndex(t => t.name === 'CPA Blend.');
+  const idxRoas    = gd.data.findIndex(t => t.name === 'ROAs');
+  const idxPlanInv = gd.data.findIndex(t => t.name === 'Plan Inv.');
+
+  // Visibilidad: barras según canal, líneas siempre visibles
+  const visible = gd.data.map(t => toHL.includes(t.name));
+  if (idxCpa     >= 0) visible[idxCpa]     = true;
+  if (idxRoas    >= 0) visible[idxRoas]    = true;
+  if (idxPlanInv >= 0) visible[idxPlanInv] = true;
+
+  // Recalcular CPA Blend real
+  if (idxCpa >= 0) {
+    const y = D.cost_months.map(m => {
+      const inv = toHL.reduce((s, lbl) => s + ((D.monthly_inv_total[lbl] || {})[m] || 0), 0);
+      const nr  = toHL.reduce((s, lbl) => s + ((D.monthly_nr[lbl]       || {})[m] || 0), 0);
+      return nr > 0 ? Math.round(inv / nr * 100) / 100 : null;
+    });
+    const cust = y.map(v => v != null ? '$' + v.toFixed(2) : '—');
+    Plotly.restyle('chart-perf-bar', {y: [y], customdata: [cust]}, [idxCpa]);
+  }
+
+  // Recalcular ROAs = (VPU_avg × N+R Paid) / Inv
+  if (idxRoas >= 0) {
+    const y = D.cost_months.map(m => {
+      const inv  = toHL.reduce((s, lbl) => s + ((D.monthly_inv_total[lbl]  || {})[m] || 0), 0);
+      const nr   = toHL.reduce((s, lbl) => s + ((D.monthly_nr[lbl]         || {})[m] || 0), 0);
+      const vpuP = toHL.reduce((s, lbl) => s + ((D.perf_vpu_prod[lbl]      || {})[m] || 0), 0);
+      const paid = toHL.reduce((s, lbl) => s + ((D.perf_nr_paid[lbl]       || {})[m] || 0), 0);
+      const vpu  = nr > 0 ? vpuP / nr : 0;
+      const vp   = vpu * paid;
+      return (inv > 0 && vp > 0) ? Math.round(vp / inv * 100) / 100 : null;
+    });
+    const cust = y.map(v => v != null ? v.toFixed(2) + 'x' : '—');
+    Plotly.restyle('chart-perf-bar', {y: [y], customdata: [cust]}, [idxRoas]);
+  }
+
+  // Recalcular Plan Inv. — usa D.plan_inv[canal] si existe, si no Total N+R
+  // D.plan_inv está indexado por labels de HIERARCHY_NR (igual que el dropdown de canal)
+  if (idxPlanInv >= 0) {
+    const planInvByMonth = D.plan_inv[canal] || D.plan_inv['Total N+R'] || {};
+    const y = D.cost_months.map(m => {
+      const v = planInvByMonth[m] || null;
+      return v ? v / 1e6 : null;
+    });
+    const cust = y.map(v => {
+      if (v == null) return '—';
+      if (v >= 1) return '$' + v.toFixed(2) + 'M';
+      return '$' + Math.round(v * 1000) + 'K';
+    });
+    Plotly.restyle('chart-perf-bar', {y: [y], customdata: [cust]}, [idxPlanInv]);
+  }
+
+  Plotly.restyle('chart-perf-bar', {visible: visible});
+
+  // Anotaciones dinámicas: total inversión por mes según canal seleccionado
+  function fmtInvAnn(v) {
+    if (v >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+    if (v >= 1e3) return '$' + Math.round(v/1e3) + 'K';
+    return '$' + Math.round(v);
+  }
+  const annots = D.cost_months.map(m => {
+    const totalInv = toHL.reduce((s, lbl) => s + ((D.monthly_inv_total[lbl] || {})[m] || 0), 0);
+    return {
+      x: D.cost_month_labels[m], y: totalInv / 1e6,
+      text: fmtInvAnn(totalInv),
+      showarrow: false, yanchor: 'bottom', yshift: 5,
+      font: {size: 9, color: '#333'}
+    };
+  });
+  Plotly.relayout('chart-perf-bar', {annotations: annots});
+}
+
+function filterTablePerf(canal) {
+  const allRows = document.querySelectorAll('#pane-perf .mom-tbl tbody tr');
+  if (!canal || canal === 'Total N+R' || canal === '') {
+    allRows.forEach(tr => { tr.style.display = ''; });
+    return;
+  }
+  // Canal específico: mostrar solo ese canal y sus hijos — SIN Total N+R
+  const showLabels = new Set();
+  const idx = D.labels.indexOf(canal);
+  if (idx >= 0) {
+    showLabels.add(canal);
+    const baseIndent = D.indents[idx];
+    for (let i = idx + 1; i < D.labels.length; i++) {
+      if (D.indents[i] > baseIndent) showLabels.add(D.labels[i]);
+      else break;
+    }
+  }
+  let lastVis = false;
+  allRows.forEach(tr => {
+    if (tr.hasAttribute('data-canal')) {
+      lastVis = showLabels.has(tr.getAttribute('data-canal'));
+    }
+    tr.style.display = lastVis ? '' : 'none';
+  });
+}
+
+function highlightColPerf(month) {
+  document.querySelectorAll('#pane-perf .mom-tbl [data-month]').forEach(el => {
+    el.classList.toggle('col-highlighted', el.dataset.month === month);
+  });
+}
+
+// ── PERFORMANCE_vista_Corp — toggle colapso + highlight columna ──────────────
+// Tabla estática HTML (generada en Python por build_perf_corp_table_html).
+// Atributos: data-corp-perf-node (solo fila header), data-corp-perf-parent, data-corp-perf-toggle.
+// Separados de data-corp-* (NR Mensual) y data-corp-daily-* (NR Diario) para evitar conflictos.
+
+function collapseCorpPerfNode(nodeId) {
+  // Colapso recursivo — idéntico a collapseCorpNode() pero sobre data-corp-perf-*
+  const directChildRows = document.querySelectorAll(
+    `.perf-corp-tbl tr[data-corp-perf-parent="${nodeId}"]`
+  );
+  directChildRows.forEach(row => { row.style.display = 'none'; });
+
+  // Recursivo para sub-nodos que también tienen hijos
+  document.querySelectorAll(
+    `.perf-corp-tbl tr[data-corp-perf-parent="${nodeId}"][data-corp-perf-node]`
+  ).forEach(row => {
+    const childId = row.dataset.corpPerfNode;
+    if (childId) collapseCorpPerfNode(childId);
+  });
+
+  // Restablecer botón ▶
+  const btn = document.querySelector(`.perf-corp-tbl [data-corp-perf-toggle="${nodeId}"]`);
+  if (btn) btn.textContent = '▶';
+}
+
+function toggleCorpPerfNode(nodeId) {
+  // Toggle expand/colapso — idéntico a toggleCorpNode() pero sobre data-corp-perf-*
+  const directChildRows = document.querySelectorAll(
+    `.perf-corp-tbl tr[data-corp-perf-parent="${nodeId}"]`
+  );
+  if (!directChildRows.length) return;
+
+  const isExpanded = directChildRows[0].style.display !== 'none';
+  const btn = document.querySelector(`.perf-corp-tbl [data-corp-perf-toggle="${nodeId}"]`);
+
+  if (isExpanded) {
+    collapseCorpPerfNode(nodeId);
+  } else {
+    directChildRows.forEach(r => { r.style.display = ''; });
+    if (btn) btn.textContent = '▼';
+  }
+}
+
+function highlightColPerfCorp(month) {
+  // Resalta la columna del mes seleccionado en la tabla Performance_vista_Corp
+  document.querySelectorAll('#pane-perf-corp .perf-corp-tbl [data-month]').forEach(el => {
+    el.style.outline = el.dataset.month === month ? '2px solid #1a7ad6' : '';
+  });
+}
+
+// ── SECCIÓN CORPORATIVA DIARIA — NR Diario (pane-nr-diario) ──────────────────
+// Espejo de la sección corp mensual pero renderizada dinámicamente en JS
+// para el mes seleccionado. Fuente de datos: D.daily_nr_corp_by_node.
+//
+// Estructura jerárquica: igual que la tabla mensual corp (HIERARCHY_NR_CORP embebida en D).
+// Los node_ids, bq_keys y relaciones padre/hijo vienen de config/channels_config.json →
+// hierarchy_nr_corp_detail, ya resueltos en daily_nr_corp_by_node por process_nr_corp_daily().
+//
+// Funciones:
+//   renderNRCorpDailySection(month_key)   → dispatcher: actualiza chart + tabla
+//   renderNRCorpDailyChart(month_key)     → Plotly.react barras apiladas % por grupo por día
+//   renderNRCorpDailyTable(month_key)     → tabla HTML colapsable N+R + Share por día
+//   toggleCorpDailyNode(node_id)          → expande/colapsa hijos en la tabla diaria
+//   collapseCorpDailyNode(node_id)        → colapso recursivo en la tabla diaria
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTES de HIERARCHY_NR_CORP embebidas en JS para evitar regenerar en cada llamada.
+// Se inicializan en la primera llamada a renderNRCorpDailySection().
+// ─────────────────────────────────────────────────────────────────────────────
+let _nrCorpDailyHierarchyNodeById  = null;  // { node_id: node_object }
+let _nrCorpDailyChartInitialized   = false; // flag: Plotly.newPlot ya fue llamado
+
+// Colores de los 4 grupos de canal — idénticos a build_nr_corp_bar_chart() en builders.py
+const NR_CORP_GROUP_COLORS_BY_NODE_ID = {
+  'corp_noatrib':  '#C8CDD8',   // NO ATRIBUIDO — gris claro
+  'corp_oc_ucr':   '#F5D000',   // OC+UCRANIA   — amarillo
+  'corp_pom':      '#1FB8D4',   // POM           — cian
+  'corp_others':   '#7A7D82',   // OTHERS        — gris oscuro
+};
+
+// Grupos de nivel sub1 en el orden correcto para el chart apilado (de abajo a arriba)
+const NR_CORP_GROUP_STACK_ORDER_FOR_CHART = [
+  'corp_noatrib', 'corp_oc_ucr', 'corp_pom', 'corp_others'
+];
+
+function _buildNrCorpDailyHierarchyLookup() {
+  // Construye el lookup node_id → nodo una sola vez desde D.daily_nr_corp_by_node.
+  // Usamos las claves de daily_nr_corp_by_node para inferir qué nodos existen.
+  // La jerarquía completa (parent/children) fue definida en channels_config.json y
+  // propagada en process_nr_corp_daily(). Aquí reconstruimos desde las constantes del template.
+  if (_nrCorpDailyHierarchyNodeById !== null) return; // ya inicializado
+
+  // Definición inline de la jerarquía — refleja channels_config.json hierarchy_nr_corp_detail
+  // Se mantiene aquí para que el JS sea autocontenido (no depender de D.channels_config).
+  const CORP_HIERARCHY_NODES_FOR_JS = [
+    { id:'corp_total',            label:'Total N+R',             level:'grand',   indent:0, color:'#2D3277', children:['corp_oc_ucr','corp_pom','corp_others','corp_noatrib'], is_leaf:false },
+    { id:'corp_oc_ucr',           label:'OC + UCR',              level:'sub1',    indent:1, color:'#5899D1', children:['corp_ucr_eg','corp_oc_recurring','corp_oc_adhoc'],    is_leaf:false },
+    { id:'corp_pom',              label:'POM',                   level:'sub1',    indent:1, color:'#2F9E8F', children:['corp_acq_pom','corp_act_pom','corp_web_pom','corp_ctw_pom'], is_leaf:false },
+    { id:'corp_others',           label:'OTHERS',                level:'sub1',    indent:1, color:'#888888', children:['corp_mgm','corp_lp','corp_ucr_prd','corp_seo','corp_pom_sellers','corp_pom_others'], is_leaf:false },
+    { id:'corp_noatrib',          label:'NO ATRIBUIDO',          level:'sub1',    indent:1, color:'#A4ACB9', children:[], is_leaf:true },
+    { id:'corp_ucr_eg',           label:'UCRANIA E&G',           level:'sub2',    indent:2, color:'#5899D1', children:['corp_ucr_eg_email','corp_ucr_eg_pandora','corp_ucr_eg_push','corp_ucr_eg_real_estates','corp_ucr_eg_wpp'], is_leaf:false },
+    { id:'corp_oc_recurring',     label:'OWN CHANNELS RECURRING',level:'sub2',    indent:2, color:'#4A80C4', children:['corp_oc_rec_email','corp_oc_rec_journey','corp_oc_rec_pandora','corp_oc_rec_push','corp_oc_rec_wpp'], is_leaf:false },
+    { id:'corp_oc_adhoc',         label:'OWN CHANNELS ADHOC',    level:'sub2',    indent:2, color:'#E1484C', children:[], is_leaf:true },
+    { id:'corp_acq_pom',          label:'ACQUISITION POM',       level:'sub2',    indent:2, color:'#2F9E8F', children:[], is_leaf:true },
+    { id:'corp_act_pom',          label:'ACTIVATION POM',        level:'sub2',    indent:2, color:'#86C9C4', children:[], is_leaf:true },
+    { id:'corp_web_pom',          label:'WEB POM',               level:'sub2',    indent:2, color:'#4E9F8A', children:[], is_leaf:true },
+    { id:'corp_ctw_pom',          label:'CTW POM',               level:'sub2',    indent:2, color:'#7ECBBF', children:[], is_leaf:true },
+    { id:'corp_mgm',              label:'MGM',                   level:'sub2',    indent:2, color:'#F5A664', children:[], is_leaf:true },
+    { id:'corp_lp',               label:'L&P',                   level:'sub2',    indent:2, color:'#7A41ED', children:['corp_lp_brandformance','corp_lp_landings','corp_lp_partnerships','corp_lp_others','corp_lp_gtm','corp_lp_affiliates'], is_leaf:false },
+    { id:'corp_ucr_prd',          label:'UCR PRD',               level:'sub2',    indent:2, color:'#1AB059', children:[], is_leaf:true },
+    { id:'corp_seo',              label:'SEO',                   level:'sub2',    indent:2, color:'#8B6914', children:[], is_leaf:true },
+    { id:'corp_pom_sellers',      label:'POM SELLERS',           level:'sub2',    indent:2, color:'#6BB8AA', children:[], is_leaf:true },
+    { id:'corp_pom_others',       label:'POM OTHERS',            level:'sub2',    indent:2, color:'#9FD4C8', children:[], is_leaf:true },
+    { id:'corp_lp_brandformance', label:'BRANDFORMANCE',         level:'medio',   indent:3, color:'#7A41ED', children:[], is_leaf:true },
+    { id:'corp_lp_landings',      label:'LANDINGS',              level:'medio',   indent:3, color:'#7A41ED', children:[], is_leaf:true },
+    { id:'corp_lp_partnerships',  label:'PARTNERSHIPS',          level:'medio',   indent:3, color:'#7A41ED', children:[], is_leaf:true },
+    { id:'corp_lp_others',        label:'OTHERS',                level:'medio',   indent:3, color:'#7A41ED', children:[], is_leaf:true },
+    { id:'corp_lp_gtm',           label:'GTM',                   level:'medio',   indent:3, color:'#7A41ED', children:[], is_leaf:true },
+    { id:'corp_lp_affiliates',    label:'AFFILIATES',            level:'medio',   indent:3, color:'#7A41ED', children:[], is_leaf:true },
+    { id:'corp_ucr_eg_email',         label:'EMAIL',        level:'medio', indent:3, color:'#5899D1', children:[], is_leaf:true },
+    { id:'corp_ucr_eg_pandora',       label:'PANDORA',      level:'medio', indent:3, color:'#5899D1', children:[], is_leaf:true },
+    { id:'corp_ucr_eg_push',          label:'PUSH',         level:'medio', indent:3, color:'#5899D1', children:[], is_leaf:true },
+    { id:'corp_ucr_eg_real_estates',  label:'REAL ESTATES', level:'medio', indent:3, color:'#5899D1', children:[], is_leaf:true },
+    { id:'corp_ucr_eg_wpp',           label:'WPP',          level:'medio', indent:3, color:'#5899D1', children:[], is_leaf:true },
+    { id:'corp_oc_rec_email',   label:'EMAIL',   level:'medio', indent:3, color:'#4A80C4', children:[], is_leaf:true },
+    { id:'corp_oc_rec_journey', label:'JOURNEY', level:'medio', indent:3, color:'#4A80C4', children:[], is_leaf:true },
+    { id:'corp_oc_rec_pandora', label:'PANDORA', level:'medio', indent:3, color:'#4A80C4', children:[], is_leaf:true },
+    { id:'corp_oc_rec_push',    label:'PUSH',    level:'medio', indent:3, color:'#4A80C4', children:[], is_leaf:true },
+    { id:'corp_oc_rec_wpp',     label:'WPP',     level:'medio', indent:3, color:'#4A80C4', children:[], is_leaf:true },
+  ];
+
+  _nrCorpDailyHierarchyNodeById = {};
+  CORP_HIERARCHY_NODES_FOR_JS.forEach(n => { _nrCorpDailyHierarchyNodeById[n.id] = n; });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+function renderNRCorpDailySection(month_key) {
+  // Dispatcher principal. Llamado desde renderNRDiario() cada vez que cambia el mes.
+  // Actualiza tanto la gráfica como la tabla de la sección corp diaria.
+  _buildNrCorpDailyHierarchyLookup();
+  renderNRCorpDailyChart(month_key);
+  renderNRCorpDailyTable(month_key);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+function renderNRCorpDailyChart(month_key) {
+  // Gráfica Plotly de barras apiladas: N+R diario por grupo de canal.
+  // Usa Plotly.newPlot() la primera vez y Plotly.react() en actualizaciones
+  // para eficiencia (evita recrear el DOM en cada cambio de mes).
+
+  const chart_div_element = document.getElementById('chart-nr-corp-daily-bar');
+  if (!chart_div_element) return;
+
+  // Obtener días disponibles para este mes (ordenados numéricamente)
+  const nr_total_by_day_for_month = (D.daily_nr_corp_by_node['corp_total'] || {})[month_key] || {};
+  const sorted_days_in_month = Object.keys(nr_total_by_day_for_month)
+    .map(Number).sort((a, b) => a - b).map(String);
+
+  if (sorted_days_in_month.length === 0) {
+    chart_div_element.innerHTML = '<div style="text-align:center;color:#aaa;padding:40px">Sin datos para este mes</div>';
+    _nrCorpDailyChartInitialized = false;
+    return;
+  }
+
+  // Etiquetas del eje X: "D1", "D2", ..., "D31"
+  const x_axis_day_labels = sorted_days_in_month.map(d => 'D' + d);
+
+  // Totales por día (para calcular % de participación de cada grupo)
+  const nr_total_values_by_day = sorted_days_in_month.map(d => nr_total_by_day_for_month[d] || 0);
+
+  // Construir un trace Plotly por cada grupo del stack (orden: base→tope)
+  // Incluye: % label dentro de la barra + hover con absoluto y % (igual que NR Mensual corp)
+  const plotly_traces_for_corp_groups = NR_CORP_GROUP_STACK_ORDER_FOR_CHART.map(group_node_id => {
+    const nr_by_day_for_group   = (D.daily_nr_corp_by_node[group_node_id] || {})[month_key] || {};
+    const y_nr_values_for_group = sorted_days_in_month.map(d => nr_by_day_for_group[d] || 0);
+    const group_node_data       = _nrCorpDailyHierarchyNodeById[group_node_id] || {};
+    const group_display_label   = group_node_data.label || group_node_id;
+    const group_bar_color       = NR_CORP_GROUP_COLORS_BY_NODE_ID[group_node_id] || '#888';
+
+    // % participación por día: nr_grupo_día / nr_total_día
+    const pct_by_day = y_nr_values_for_group.map((nr_val, i) => {
+      const total_this_day = nr_total_values_by_day[i];
+      return total_this_day > 0 ? Math.round(nr_val / total_this_day * 1000) / 10 : 0;
+    });
+
+    // Label dentro de la barra: solo mostrar si el segmento es >= 5% (igual que NR Mensual)
+    const inside_pct_labels = pct_by_day.map(p => p >= 5 ? p.toFixed(0) + '%' : '');
+
+    // customdata: [nr_absoluto, pct] — para el hover enriquecido
+    const customdata_for_hover = y_nr_values_for_group.map((nr_val, i) => [nr_val, pct_by_day[i]]);
+
+    // Color del texto dentro de la barra: oscuro para amarillo (OC+UCRANIA), blanco para el resto
+    const inside_text_color = group_node_id === 'corp_oc_ucr' ? '#333333' : '#ffffff';
+
+    return {
+      name:          group_display_label,
+      x:             x_axis_day_labels,
+      y:             y_nr_values_for_group,
+      type:          'bar',
+      marker:        { color: group_bar_color },
+      // % dentro de la barra (misma lógica que build_nr_corp_bar_chart en builders.py)
+      text:          inside_pct_labels,
+      textposition:  'inside',
+      textfont:      { size: 10, color: inside_text_color },
+      // Hover: "CANAL: 45,648 (4.1%)" — idéntico al tooltip de la gráfica NR Mensual corp
+      customdata:    customdata_for_hover,
+      hovertemplate: group_display_label + ': %{customdata[0]:,} (%{customdata[1]:.1f}%)<extra></extra>'
+    };
+  });
+
+  const plotly_layout_for_corp_daily_chart = {
+    barmode:        'stack',
+    height:         300,
+    plot_bgcolor:   'white',
+    paper_bgcolor:  'white',
+    title:          { text: 'N+R Diario por Grupo de Canal — ' + (D.month_labels[month_key] || month_key),
+                      font: { size: 12, color: '#0d1f3c' } },
+    hovermode:      'x unified',
+    legend:         { orientation: 'h', y: -0.22, font: { size: 10 }, traceorder: 'reversed' },
+    margin:         { l: 40, r: 20, t: 45, b: 70 },
+    uniformtext:    { minsize: 9, mode: 'hide' },
+    yaxis:          { showgrid: true, gridcolor: '#eeeeee', tickfont: { size: 10 },
+                      tickformat: ',.0f', zeroline: false },
+    xaxis:          { tickfont: { size: 9 }, showgrid: false },
+    // Anotaciones: total N+R encima de cada barra diaria
+    annotations: sorted_days_in_month.map((d, i) => {
+      const total_this_day = nr_total_values_by_day[i];
+      if (!total_this_day) return null;
+      const lbl = total_this_day >= 1000000
+        ? (total_this_day / 1000000).toFixed(2) + 'M'
+        : total_this_day >= 1000
+          ? Math.round(total_this_day / 1000) + 'K'
+          : String(Math.round(total_this_day));
+      return { x: 'D' + d, y: total_this_day, text: '<b>' + lbl + '</b>',
+               showarrow: false, yanchor: 'bottom', yshift: 4, xanchor: 'center',
+               font: { size: 8, color: '#333333' } };
+    }).filter(a => a !== null)
+  };
+
+  if (_nrCorpDailyChartInitialized) {
+    // Actualización eficiente: Plotly.react() reusa el DOM existente
+    Plotly.react('chart-nr-corp-daily-bar', plotly_traces_for_corp_groups, plotly_layout_for_corp_daily_chart, { responsive: true });
+  } else {
+    Plotly.newPlot('chart-nr-corp-daily-bar', plotly_traces_for_corp_groups, plotly_layout_for_corp_daily_chart, { responsive: true });
+    _nrCorpDailyChartInitialized = true;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+function renderNRCorpDailyTable(month_key) {
+  // Tabla HTML colapsable con N+R y Share N+R por día del mes seleccionado.
+  // Misma estructura visual que la tabla mensual: grupos → sub-canales → medios.
+  // Filas por nodo: N+R (absoluto por día) + Share N+R (% del total ese día).
+
+  const table_container_div = document.getElementById('tbl-nr-corp-daily');
+  if (!table_container_div) return;
+
+  // Días disponibles para este mes (ordenados)
+  const nr_total_node_by_day = (D.daily_nr_corp_by_node['corp_total'] || {})[month_key] || {};
+  const sorted_days_in_month = Object.keys(nr_total_node_by_day)
+    .map(Number).sort((a, b) => a - b).map(String);
+
+  if (sorted_days_in_month.length === 0) {
+    table_container_div.innerHTML = '<p style="color:#aaa;font-size:11px;padding:8px">Sin datos diarios para este mes.</p>';
+    return;
+  }
+
+  // ── Paleta de estilos por nivel (idéntica a build_nr_corp_table_html en builders.py) ──
+  const DAILY_CORP_TABLE_LEVEL_STYLES = {
+    grand:  { bg: '#f0f4fa', txt: '#0d1f3c', wt: '700', borderW: '3px', borderTop: true  },
+    sub1:   { bg: '#ffffff', txt: '#0d1f3c', wt: '700', borderW: '3px', borderTop: true  },
+    sub2:   { bg: '#ffffff', txt: '#1a3562', wt: '500', borderW: '2px', borderTop: false },
+    medio:  { bg: '#ffffff', txt: '#333333', wt: '400', borderW: '2px', borderTop: false },
+  };
+  const DAILY_CORP_TABLE_SUBROW_STYLE_BG  = { grand:'#e8edf5', sub1:'#f5f6f8', sub2:'#f5f6f8', medio:'#f5f6f8' };
+  const DAILY_CORP_TABLE_SUBROW_STYLE_TXT = { grand:'#4a6080', sub1:'#6b7a99', sub2:'#6b7a99', medio:'#888888' };
+
+  function buildDailyCorpNodeRows(node_id, parent_node_id_for_attr, should_be_hidden_initially) {
+    // Genera las 2 filas HTML del nodo (N+R + Share) para todos los días del mes,
+    // y llama recursivamente a los hijos (ocultos por defecto).
+    // Igual que render_corp_node_rows() en builders.py pero en JS y con columnas = días.
+
+    const node_data = _nrCorpDailyHierarchyNodeById[node_id];
+    if (!node_data) return '';
+
+    const node_level   = node_data.level || 'medio';
+    const node_label   = node_data.label;
+    const node_indent  = node_data.indent || 0;
+    const node_color   = node_data.color  || '#888';
+    const child_ids    = node_data.children || [];
+
+    const nr_by_day_for_node = (D.daily_nr_corp_by_node[node_id] || {})[month_key] || {};
+
+    const style_def   = DAILY_CORP_TABLE_LEVEL_STYLES[node_level] || DAILY_CORP_TABLE_LEVEL_STYLES.medio;
+    const sub_bg      = DAILY_CORP_TABLE_SUBROW_STYLE_BG[node_level]  || '#f5f6f8';
+    const sub_txt     = DAILY_CORP_TABLE_SUBROW_STYLE_TXT[node_level] || '#888';
+
+    const pad_left_px     = node_indent * 18 + 10;
+    const sub_pad_left_px = (node_indent + 1) * 18 + 10;
+    const border_top_css  = style_def.borderTop ? 'border-top:1px solid #e0e4ed;' : '';
+
+    const main_cell_style   = `${border_top_css}background:${style_def.bg};color:${style_def.txt};font-weight:${style_def.wt};border-left:${style_def.borderW} solid ${node_color}`;
+    const subrow_cell_style = `background:${sub_bg};color:${sub_txt};font-size:10px;border-left:${style_def.borderW} solid ${node_color}`;
+
+    const hidden_row_attr  = should_be_hidden_initially ? ' style="display:none"' : '';
+    const parent_data_attr = parent_node_id_for_attr ? ` data-corp-daily-parent="${parent_node_id_for_attr}"` : '';
+
+    // Botón toggle ▶ para nodos con hijos, bullet ● para hojas
+    const toggle_or_bullet_html = child_ids.length > 0
+      ? `<button onclick="toggleCorpDailyNode('${node_id}')" data-corp-daily-toggle="${node_id}" style="background:none;border:none;cursor:pointer;color:${node_color};font-size:10px;margin-right:4px;padding:0;font-weight:700">▶</button>`
+      : `<span style="display:inline-block;width:18px;color:${node_color};font-size:9px">●</span>`;
+
+    let rows_html = '';
+
+    // ── Fila N+R ──────────────────────────────────────────────────────────────
+    rows_html += `<tr${parent_data_attr}${hidden_row_attr} data-corp-daily-node="${node_id}">`;
+    rows_html += `<td class="lbl-col" style="padding-left:${pad_left_px}px;${main_cell_style}">${toggle_or_bullet_html}${node_label}</td>`;
+    sorted_days_in_month.forEach(dia_str => {
+      const nr_value_this_day = nr_by_day_for_node[dia_str] || 0;
+      const formatted_nr = nr_value_this_day >= 1000
+        ? (nr_value_this_day >= 1000000 ? (nr_value_this_day/1000000).toFixed(2)+'M' : (nr_value_this_day/1000).toFixed(1)+'K')
+        : (nr_value_this_day || '—');
+      rows_html += `<td style="${main_cell_style}" data-day="${dia_str}">${formatted_nr}</td>`;
+    });
+    rows_html += '</tr>';
+
+    // ── Fila Share N+R ────────────────────────────────────────────────────────
+    rows_html += `<tr${parent_data_attr}${hidden_row_attr}>`;
+    rows_html += `<td class="lbl-col" style="padding-left:${sub_pad_left_px}px;${subrow_cell_style};font-style:italic">Share N+R</td>`;
+    sorted_days_in_month.forEach(dia_str => {
+      const nr_value_this_day    = nr_by_day_for_node[dia_str] || 0;
+      const total_nr_this_day    = nr_total_node_by_day[dia_str] || 0;
+      const share_pct_this_day   = total_nr_this_day > 0 ? (nr_value_this_day / total_nr_this_day * 100).toFixed(1) + '%' : '—';
+      rows_html += `<td style="${subrow_cell_style}" data-day="${dia_str}">${share_pct_this_day}</td>`;
+    });
+    rows_html += '</tr>';
+
+    // ── Hijos (recursivo, ocultos por defecto) ────────────────────────────────
+    child_ids.forEach(child_id => {
+      rows_html += buildDailyCorpNodeRows(child_id, node_id, true);
+    });
+
+    return rows_html;
+  }
+
+  // ── Construir HTML completo de la tabla ──────────────────────────────────
+  const root_node_data  = _nrCorpDailyHierarchyNodeById['corp_total'] || {};
+  const top_group_ids   = root_node_data.children || [];
+
+  let table_html = '<div class="table-scroll"><table class="mom-tbl nr-corp-tbl">';
+  table_html += '<thead><tr><th class="lbl-col">Canal / Métrica</th>';
+  sorted_days_in_month.forEach(d => { table_html += `<th>D${d}</th>`; });
+  table_html += '</tr></thead><tbody>';
+
+  // Grupos primero (sin corp_total)
+  top_group_ids.forEach(group_id => {
+    table_html += buildDailyCorpNodeRows(group_id, null, false);
+  });
+
+  // Separador + Total N+R al fondo
+  const sep_cols = sorted_days_in_month.map(() => '<td style="border-top:2px solid #2d5986;padding:0;height:4px;background:#f0f4fa"></td>').join('');
+  table_html += `<tr><td style="border-top:2px solid #2d5986;padding:0;height:4px;background:#f0f4fa"></td>${sep_cols}</tr>`;
+  table_html += buildDailyCorpNodeRows('corp_total', null, false);
+
+  table_html += '</tbody></table></div>';
+  table_container_div.innerHTML = table_html;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+function collapseCorpDailyNode(node_id_to_collapse) {
+  // Colapso recursivo: oculta hijos directos + todos sus descendientes.
+  // Análogo a collapseCorpNode() pero opera sobre data-corp-daily-parent/toggle.
+  const direct_child_rows = document.querySelectorAll(
+    `#tbl-nr-corp-daily tr[data-corp-daily-parent="${node_id_to_collapse}"]`
+  );
+  direct_child_rows.forEach(row => { row.style.display = 'none'; });
+
+  // Colapsar recursivamente los hijos que sean a su vez padres
+  const child_header_rows_with_node_id = document.querySelectorAll(
+    `#tbl-nr-corp-daily tr[data-corp-daily-parent="${node_id_to_collapse}"][data-corp-daily-node]`
+  );
+  child_header_rows_with_node_id.forEach(row => {
+    const child_node_id = row.dataset.corpDailyNode;
+    if (child_node_id) collapseCorpDailyNode(child_node_id);
+  });
+
+  // Restablecer botón toggle a ▶
+  const toggle_btn_element = document.querySelector(
+    `#tbl-nr-corp-daily [data-corp-daily-toggle="${node_id_to_collapse}"]`
+  );
+  if (toggle_btn_element) toggle_btn_element.textContent = '▶';
+}
+
+function toggleCorpDailyNode(node_id_to_toggle) {
+  // Alterna expansión/colapso de los hijos directos del nodo.
+  // Expansión: solo muestra hijos directos (nietos siguen ocultos).
+  // Colapso: oculta hijos Y todos los descendientes (recursivo via collapseCorpDailyNode).
+  const direct_child_rows = document.querySelectorAll(
+    `#tbl-nr-corp-daily tr[data-corp-daily-parent="${node_id_to_toggle}"]`
+  );
+  if (!direct_child_rows.length) return;
+
+  const is_currently_expanded = direct_child_rows[0].style.display !== 'none';
+  const toggle_btn_element    = document.querySelector(
+    `#tbl-nr-corp-daily [data-corp-daily-toggle="${node_id_to_toggle}"]`
+  );
+
+  if (is_currently_expanded) {
+    collapseCorpDailyNode(node_id_to_toggle);
+  } else {
+    direct_child_rows.forEach(row => { row.style.display = ''; });
+    if (toggle_btn_element) toggle_btn_element.textContent = '▼';
+  }
+}
+
+// ── TABLA CORPORATIVA N+R — toggle colapso/expansión ─────────────────────────
+// Estructura: grupo(sub1) → sub-canal(sub2) → medio(leaf)
+// Cada nodo genera 3 filas (N+R, MoM, Share). Solo la fila N+R lleva data-corp-node.
+// Todas las filas de hijos directos llevan data-corp-parent="{nodeId}".
+
+function collapseCorpNode(nodeId) {
+  // 1. Ocultar todas las filas que sean hijas directas de este nodo
+  const directChildRows = document.querySelectorAll(
+    `.nr-corp-tbl tr[data-corp-parent="${nodeId}"]`
+  );
+  directChildRows.forEach(row => {
+    row.style.display = 'none';
+  });
+
+  // 2. Para cada fila-cabecera de hijo (las que tienen data-corp-node),
+  //    colapsar recursivamente sus propios hijos
+  const childHeaderRows = document.querySelectorAll(
+    `.nr-corp-tbl tr[data-corp-parent="${nodeId}"][data-corp-node]`
+  );
+  childHeaderRows.forEach(row => {
+    const childNodeId = row.dataset.corpNode;
+    if (childNodeId) collapseCorpNode(childNodeId);
+  });
+
+  // 3. Restablecer botón toggle de este nodo a ▶ (colapsado)
+  const toggleBtn = document.querySelector(`.nr-corp-tbl [data-corp-toggle="${nodeId}"]`);
+  if (toggleBtn) toggleBtn.textContent = '▶';
+}
+
+// ── toggleCommsGroup — Toggle de filas de detalle en la pestaña Comms_OC ────────
+// Llamada desde el botón ▶/▼ de cada fila de resumen (CANAL × MES).
+//
+// Estructura HTML esperada (generada por builders.build_comms_oc_table_html()):
+//   Fila resumen  : <tr data-comms-group="{groupId}">
+//                     <button data-comms-toggle="{groupId}">▶</button>
+//                   </tr>
+//   Filas detalle : <tr data-comms-parent="{groupId}" style="display:none">
+//
+// Comportamiento:
+//   · Si las filas de detalle están ocultas (display:none) → mostrar todas + cambiar ▶ a ▼
+//   · Si están visibles → ocultar todas + cambiar ▼ a ▶
+//
+// No llama a collapseCommsGroup() — el colapso es directo (no hay sub-niveles anidados
+// en Comms_OC, a diferencia de la tabla corporativa que tiene 4 niveles de jerarquía).
+function toggleCommsGroup(groupIdString) {
+  // Obtener todas las filas de detalle de este grupo (campañas únicas)
+  const detailRowsForThisGroup = document.querySelectorAll(
+    `[data-comms-parent="${groupIdString}"]`
+  );
+  if (detailRowsForThisGroup.length === 0) return;  // sin filas de detalle → nada que hacer
+
+  // Determinar estado actual: si la primera fila está oculta → expandir; si visible → colapsar
+  const currentFirstRowIsHidden = detailRowsForThisGroup[0].style.display === 'none';
+  const newDisplayValue = currentFirstRowIsHidden ? '' : 'none';
+  const newToggleButtonText = currentFirstRowIsHidden ? '▼' : '▶';
+
+  // Aplicar el nuevo estado a todas las filas de detalle del grupo
+  detailRowsForThisGroup.forEach(detailRow => {
+    detailRow.style.display = newDisplayValue;
+  });
+
+  // Actualizar el texto del botón toggle de la fila de resumen
+  const toggleButtonForThisGroup = document.querySelector(
+    `[data-comms-toggle="${groupIdString}"]`
+  );
+  if (toggleButtonForThisGroup) {
+    toggleButtonForThisGroup.textContent = newToggleButtonText;
+  }
+}
+
+function toggleCorpNode(nodeId) {
+  // Buscar filas hijas directas (N+R + MoM + Share de cada hijo directo)
+  const directChildRows = document.querySelectorAll(
+    `.nr-corp-tbl tr[data-corp-parent="${nodeId}"]`
+  );
+  if (!directChildRows.length) return;
+
+  const isCurrentlyExpanded = directChildRows[0].style.display !== 'none';
+  const toggleBtn = document.querySelector(`.nr-corp-tbl [data-corp-toggle="${nodeId}"]`);
+
+  if (isCurrentlyExpanded) {
+    // COLAPSAR: ocultar hijos directos y todos sus descendientes
+    collapseCorpNode(nodeId);
+    // toggleBtn ya fue restablecido a ▶ por collapseCorpNode
+  } else {
+    // EXPANDIR: mostrar solo hijos directos (los nietos siguen ocultos hasta nuevo click)
+    directChildRows.forEach(row => {
+      row.style.display = '';
+    });
+    if (toggleBtn) toggleBtn.textContent = '▼';
+  }
+}
+
+// ── DOWNLOAD HTML ─────────────────────────────────────────────
+function downloadHTML() {
+  const a = document.createElement('a');
+  a.href = 'data:text/html;charset=utf-8,' + encodeURIComponent(document.documentElement.outerHTML);
+  a.download = 'MLM_ADQ_Dashboard_' + new Date().toISOString().slice(0,10) + '.html';
+  a.click();
+}
+
+// ── EXPORT COMMS_OC → XLSX ────────────────────────────────────
+// Exporta las filas VISIBLES (post-filtro) de la tabla Comms_OC a un archivo .xlsx.
+// Usa SheetJS (cargado desde CDN). El nombre del archivo incluye fecha y filtros activos.
+function downloadCommsOcXlsx() {
+  if (typeof XLSX === 'undefined') {
+    alert('SheetJS no está disponible. Verifica la conexión a internet.');
+    return;
+  }
+
+  // Cabeceras: leer del <thead> de la tabla Comms_OC
+  const table = document.querySelector('#pane-comms-oc table');
+  if (!table) { alert('Tabla Comms_OC no encontrada.'); return; }
+  const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+
+  // Filas visibles (post-filtro)
+  const visibleRows = Array.from(table.querySelectorAll('tbody tr[data-month]'))
+    .filter(tr => tr.style.display !== 'none');
+
+  if (visibleRows.length === 0) { alert('No hay filas visibles para exportar.'); return; }
+
+  // Construir array de arrays [[header...], [row1...], [row2...], ...]
+  const data = [headers];
+  visibleRows.forEach(tr => {
+    const cells = Array.from(tr.querySelectorAll('td')).map(td => {
+      const raw = td.textContent.trim();
+      // Intentar convertir números (quitando K/M, $, %, +)
+      const clean = raw.replace(/[+$%,]/g, '').replace('K','e3').replace('M','e6');
+      const num = parseFloat(clean);
+      return (!isNaN(num) && raw !== '—' && raw !== '') ? num : raw;
+    });
+    data.push(cells);
+  });
+
+  // Crear workbook y descargar
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  // Ancho de columnas automático
+  ws['!cols'] = headers.map((h, i) => ({ wch: Math.max(h.length, 12) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Comms_OC');
+
+  const fecha = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `Comms_OC_MLM_${fecha}.xlsx`);
+}
+
+// ── INIT FIRST TAB ────────────────────────────────────────────
+window.addEventListener('load', () => {
+  renderKPIsNRMensual(D.latest, '');
+  highlightColNRMensual(D.latest);
+  chartsInit['mtd'] = true;
+  renderMTDTable(D.latest);
+});
+</script>
+</body>
+</html>

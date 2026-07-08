@@ -1,0 +1,524 @@
+{
+  "_meta": {
+    "version":      "1.0",
+    "created":      "2026-04-25",
+    "owner":        "sergio.ibarra@mercadolibre.com.mx",
+    "description":  "Diccionario de clasificación de comunicaciones OC para MLM Mercado Pago. Conecta CAMPAIGN_NAME_CLEAN → sub_canal_corp + clasificacion_tc + medio_corp + alertas. Reutilizado por: analizar-OC_Comms_skill.md, OPTIMIZADOR-OC_skill.md, analizar-Optimizar_Performance_KPIs_skill.md.",
+    "fuentes": [
+      "Torre de Control SSOT: BT_OC_NR_REPORTE_TORRE_DAILY.CLASIFICACION",
+      "skills/campaign_naming_guide.md §1.5 §1.7",
+      "docs/History.md §63 §64 §71 §72",
+      "BT_OC_MP_FLOWS_DAILY.FLOW taxonomy (diagnóstico Abr-2026)"
+    ],
+    "como_usar": "Para cada CAMPAIGN_NAME_CLEAN: tokenizar por (_,-,.), recorrer name_classification_rules en orden de priority (menor = más específico), usar la primera regla cuyo tokens_include estén TODOS presentes y ningún tokens_exclude esté presente. Si no hay match: clasificar como 'UNKNOWN'.",
+    "update_protocol": "Cuando el equipo confirme un nuevo patrón: (1) añadir regla en la sección correspondiente, (2) añadir campaign a known_campaigns si aplica, (3) incrementar version, (4) documentar en History.md."
+  },
+
+  "_canal_maps": {
+    "_doc": "Tablas de traducción entre dimensiones de datos. Usar para normalizar antes de clasificar.",
+
+    "canal_comms_to_medio_corp": {
+      "_doc": "Traduce el campo CANAL de Comms_OC (BT_OC_CUST_EVENT / DASHBOARD_CAMPAIGNS) al medio usado en la jerarquía Corp del dashboard.",
+      "PUSH":                "PUSH",
+      "EMAIL":               "EMAIL",
+      "WHATSAPP":            "WPP",
+      "PANDORA":             "PANDORA",
+      "JOURNEY":             "JOURNEY",
+      "REAL ESTATE - Drawer":       "REAL ESTATES",
+      "REAL ESTATE - Quick Access": "REAL ESTATES",
+      "REAL ESTATE - Discovery":    "REAL ESTATES",
+      "REAL ESTATE - Congrats":     "REAL ESTATES",
+      "SMS":                 "EMAIL",
+      "PUSH JOURNEY":        "JOURNEY",
+      "FLOW":                "JOURNEY"
+    },
+
+    "clasificacion_tc_to_sub_canal_corp": {
+      "_doc": "Traduce CLASIFICACION de BT_OC_NR_REPORTE_TORRE_DAILY al sub_canal del dashboard Corp.",
+      "UCRANIA":          "UCRANIA E&G",
+      "ACTIVATION":       "OWN CHANNELS RECURRING",
+      "OTHER RECURRING":  "OWN CHANNELS RECURRING",
+      "ADHOC":            "OWN CHANNELS ADHOC"
+    },
+
+    "sub_canal_corp_to_bq_key_prefix": {
+      "UCRANIA E&G":            "OC|UCR_EG|",
+      "OWN CHANNELS RECURRING": "OC|OC_REC|",
+      "OWN CHANNELS ADHOC":     "OC|OC_ADHOC|TOTAL"
+    },
+
+    "flow_bq_to_tipo": {
+      "_doc": "Clasifica los FLOW de BT_OC_MP_FLOWS_DAILY. ACQUISITION = relevante para N+R adquisición. PRODUCT = activación de features, no adquisición directa.",
+      "APP-MP-INSTALL":          "ACQUISITION",
+      "COBRO LINK PAGO":         "ACQUISITION",
+      "MONEY IN":                "PRODUCT",
+      "CREDIT-CARD":             "PRODUCT",
+      "CREDIT-LINE":             "PRODUCT",
+      "SERVICIOS":               "PRODUCT",
+      "POINT":                   "PRODUCT",
+      "PERSONAL-LOAN":           "PRODUCT",
+      "DINERO PLUS":             "PRODUCT",
+      "PRESTAMOS EN CUOTA FIJA": "PRODUCT",
+      "CELLPHONE RECHARGE":      "PRODUCT",
+      "TARJETA FISICA":          "PRODUCT",
+      "DEBIT-CARD":              "PRODUCT",
+      "POTS":                    "PRODUCT",
+      "ADELANTOS":               "PRODUCT",
+      "PRINCIPALIDAD":           "PRODUCT",
+      "VIDA":                    "PRODUCT",
+      "ALL CREDITS":             "PRODUCT",
+      "TAP":                     "PRODUCT",
+      "MONEY OUT":               "PRODUCT",
+      "REMESAS":                 "PRODUCT",
+      "ASSET MANAGEMENT":        "PRODUCT",
+      "CARDS":                   "PRODUCT",
+      "ALL":                     "ACQUISITION_AGGREGATE",
+      "LINEA SELLERS":           "SELLERS"
+    }
+  },
+
+  "name_classification_rules": [
+    {
+      "_doc": "Reglas ordenadas de mayor a menor especificidad (priority: menor número = más prioritario). Para cada campaña, usar la PRIMERA regla que hace match.",
+
+      "id":               "journey_activation",
+      "priority":         1,
+      "tokens_include":   ["JNY"],
+      "tokens_exclude":   [],
+      "canal_tc":         "OC",
+      "clasificacion_tc": "ACTIVATION",
+      "sub_canal_corp":   "OWN CHANNELS RECURRING",
+      "medio_corp":       "JOURNEY",
+      "trigger_tipo":     "TRIGGER_JOURNEY",
+      "flow_bq_default":  "APP-MP-INSTALL",
+      "cadencia_tipica":  "DIARIA — alto riesgo de canibalización. Ver §63 History.md.",
+      "alert_rule_id":    "journey_canibalizador",
+      "_examples": [
+        "MLM_ML_I_AH_UCR_JNY_CARABO",
+        "MLM_ML_I_AH_UCR_JNY_MST2MP",
+        "flows_communication_MLM_I_EG_MTK_mer_APP_MP_INSTALL_V7"
+      ]
+    },
+    {
+      "id":               "ucrania_eg_explicit",
+      "priority":         10,
+      "tokens_include":   ["EG", "UCR"],
+      "tokens_exclude":   ["JNY", "AH"],
+      "canal_tc":         "OC",
+      "clasificacion_tc": "UCRANIA",
+      "sub_canal_corp":   "UCRANIA E&G",
+      "medio_corp":       "infer_from_CANAL_field",
+      "trigger_tipo":     "NONE",
+      "flow_bq_default":  null,
+      "_examples": [
+        "I-EG-UCR-PUSH-CBK-GREENLIST",
+        "I-M-EG-UCR-WPP-CB-QUIN"
+      ]
+    },
+    {
+      "id":               "adhoc_non_journey",
+      "priority":         20,
+      "tokens_include":   ["AH"],
+      "tokens_exclude":   ["JNY"],
+      "canal_tc":         "OC",
+      "clasificacion_tc": "ADHOC",
+      "sub_canal_corp":   "OWN CHANNELS ADHOC",
+      "medio_corp":       "infer_from_CANAL_field",
+      "trigger_tipo":     "NONE",
+      "flow_bq_default":  null,
+      "_examples": [
+        "I-M-NR-AH-UCR-PUSH-BF-2025",
+        "MLM_ML_I_AH_LCDLF_PUSH"
+      ]
+    },
+    {
+      "id":               "ucrania_recurring_batch",
+      "priority":         30,
+      "tokens_include":   ["UCR"],
+      "tokens_exclude":   ["JNY", "AH", "EG"],
+      "canal_tc":         "OC",
+      "clasificacion_tc": "UCRANIA",
+      "sub_canal_corp":   "UCRANIA E&G",
+      "medio_corp":       "infer_from_CANAL_field",
+      "trigger_tipo":     "NONE",
+      "flow_bq_default":  null,
+      "_examples": [
+        "I-M-NR-CB-UCR-PUSH-QUIN-A-0815",
+        "I-M-NR-UCR-EMAIL-MONIN"
+      ]
+    },
+    {
+      "id":               "activation_recurring",
+      "priority":         40,
+      "tokens_include":   ["ACT"],
+      "tokens_exclude":   ["JNY", "AH", "PACT", "ACTIVATION POM"],
+      "canal_tc":         "OC",
+      "clasificacion_tc": "ACTIVATION",
+      "sub_canal_corp":   "OWN CHANNELS RECURRING",
+      "medio_corp":       "infer_from_CANAL_field",
+      "trigger_tipo":     "NONE",
+      "flow_bq_default":  null,
+      "_examples": [
+        "I-M-ACT-PUSH-WLL",
+        "MLM_MP_ML-PUSHML_DACCNT_MONIN_AO-UCR"
+      ]
+    },
+    {
+      "id":               "postcompra_trigger",
+      "priority":         25,
+      "tokens_include":   ["POSTCOMPRA"],
+      "tokens_exclude":   [],
+      "canal_tc":         "OC",
+      "clasificacion_tc": "ACTIVATION",
+      "sub_canal_corp":   "OWN CHANNELS RECURRING",
+      "medio_corp":       "infer_from_CANAL_field",
+      "trigger_tipo":     "TRIGGER_POSTCOMPRA",
+      "flow_bq_default":  null,
+      "_note": "Trigger post-compra — alto VPU histórico. Priorizar sobre batch."
+    },
+    {
+      "id":               "pandora_explicit",
+      "priority":         15,
+      "tokens_include":   ["PANDORA"],
+      "tokens_exclude":   [],
+      "canal_tc":         "OC",
+      "clasificacion_tc": "UCRANIA",
+      "sub_canal_corp":   "UCRANIA E&G",
+      "medio_corp":       "PANDORA",
+      "trigger_tipo":     "NONE",
+      "flow_bq_default":  null,
+      "_note": "Pandora tiene calibrador propio. Ver §B5 del KPI context."
+    }
+  ],
+
+  "known_campaigns": {
+    "_doc": "Campañas específicas con clasificación confirmada por datos reales. Tienen prioridad sobre las reglas genéricas. Actualizar cuando el equipo confirme nuevos fingerprints.",
+
+    "MLM_ML_I_AH_UCR_JNY_CARABO": {
+      "rule_id":          "journey_activation",
+      "clasificacion_tc": "ACTIVATION",
+      "sub_canal_corp":   "OWN CHANNELS RECURRING",
+      "medio_corp":       "JOURNEY",
+      "flow_bq":          "APP-MP-INSTALL",
+      "vp_tipo":          "VP_UNKNOWN",
+      "trigger_tipo":     "TRIGGER_JOURNEY",
+      "cadencia":         "DIARIA",
+      "status":           "CANIBALIZADOR_CONFIRMADO",
+      "user_inc_7d_hist": "negativo sistemático en Abril 2026",
+      "history_ref":      "§63 History.md",
+      "action":           "PAUSAR — umbral -50 NR/7días superado",
+      "notes":            "CARABO = código interno no determinado (ver campaign_naming_guide.md §4). Corre todos los días → satura audiencia APP-MP-INSTALL."
+    },
+
+    "MLM_ML_I_AH_UCR_JNY_MST2MP": {
+      "rule_id":          "journey_activation",
+      "clasificacion_tc": "ACTIVATION",
+      "sub_canal_corp":   "OWN CHANNELS RECURRING",
+      "medio_corp":       "JOURNEY",
+      "flow_bq":          "APP-MP-INSTALL",
+      "vp_tipo":          "VP_CONSUMER_CREDIT",
+      "trigger_tipo":     "TRIGGER_JOURNEY",
+      "cadencia":         "DIARIA",
+      "status":           "CANIBALIZADOR_CONFIRMADO",
+      "user_inc_7d_hist": "-174 NR en ~7 días (Abril 2026)",
+      "history_ref":      "§63 History.md",
+      "action":           "PAUSAR — documentado y validado",
+      "notes":            "MST2MP = Meses Sin Tarjeta → Mercado Pago (alta confianza, §63). Journey diario de Meses Sin Tarjeta → genera canibalización al llegar antes de la conversión orgánica."
+    },
+
+    "flows_communication_MLM_I_EG_MTK_mer_APP_MP_INSTALL_V7": {
+      "rule_id":          "journey_activation",
+      "clasificacion_tc": "ACTIVATION",
+      "sub_canal_corp":   "OWN CHANNELS RECURRING",
+      "medio_corp":       "JOURNEY",
+      "flow_bq":          "APP-MP-INSTALL",
+      "vp_tipo":          "VP_UNKNOWN",
+      "trigger_tipo":     "TRIGGER_JOURNEY",
+      "cadencia":         "SEMANAL_MIERCOLES",
+      "status":           "EXITOSO_HISTORICO",
+      "history_ref":      "§61 History.md",
+      "action":           "MANTENER — journey trigger-based miércoles con USER_INC positivo",
+      "notes":            "'mer' = Miércoles (alta confianza, §1.5 campaign_naming_guide). Journeys trigger-based + día específico = patrón ganador. Contraejemplo a CARABO/MST2MP (diarios)."
+    }
+  },
+
+  "vp_tipo_inference": {
+    "_doc": "Tokens en CAMPAIGN_NAME_CLEAN → VP_TIPO. Complementa campaign_naming_guide.md §1.7. Usar SOLO cuando no hay datos directos de NOTIFICATION_TITLE.",
+    "CB":      "VP_CASHBACK",
+    "CBK":     "VP_CASHBACK",
+    "CC":      "VP_CONSUMER_CREDIT",
+    "WLL":     "VP_WALLET",
+    "WALL":    "VP_WALLET",
+    "REC":     "VP_RECARGA",
+    "SVS":     "VP_SERVICIOS",
+    "PREST":   "VP_PRESTAMO",
+    "CRED":    "VP_PRESTAMO",
+    "MYI":     "VP_MONEY_IN",
+    "MYO":     "VP_MONEY_IN",
+    "MONIN":   "VP_MONEY_IN",
+    "DACCNT":  "VP_MONEY_IN",
+    "TDD":     "VP_TARJETA",
+    "TC":      "VP_TARJETA",
+    "INV":     "VP_INVERSION",
+    "SEG":     "VP_SEGURO",
+    "PAG":     "VP_PAGO",
+    "CPN":     "VP_CUPON",
+    "QUIN":    "TIMING_QUINCENA",
+    "S2":      "TIMING_S2",
+    "BF":      "TIMING_BUEN_FIN",
+    "HS":      "TIMING_HOT_SALE",
+    "LCDLF":   "TIMING_LCDLF"
+  },
+
+  "alert_rules": [
+    {
+      "id":          "journey_canibalizador",
+      "description": "Journey diario con USER_INC acumulado negativo en 7 días",
+      "trigger_condition": {
+        "medio_corp": "JOURNEY",
+        "cadencia":   "DIARIA",
+        "user_inc_7d": "< -50"
+      },
+      "severity":    "CRÍTICO",
+      "action":      "PAUSAR HOY sin excepción",
+      "template":    "🔴 ALERTA CRÍTICA: Journey '{campaign}' (FLOW={flow}) acumula {user_inc_7d} NR en 7 días → umbral de pausa -50 superado. PAUSAR antes de que siga corriendo. Ver §63 History.md.",
+      "escalate_to": "OPTIMIZADOR-OC_skill.md Modo 10 vp_ciclo",
+      "history_ref": "§63 History.md — protocolo validado con caso MST2MP"
+    },
+    {
+      "id":          "medio_declining_30pct",
+      "description": "Medio dentro de OC+UCR cae más del 20% MoM",
+      "trigger_condition": {
+        "sub_canal_corp": "OWN CHANNELS RECURRING",
+        "medio_corp_delta_mom": "< -0.20"
+      },
+      "severity":    "ALERTA",
+      "action":      "Drill-down: filtrar Comms_OC por medio afectado + USER_INC < 0",
+      "template":    "🟡 ALERTA: Medio '{medio}' en OWN CHANNELS RECURRING cayó {delta}% MoM. Identificar campañas con USER_INC negativo y aplicar protocolo de pausa si corresponde.",
+      "escalate_to": "analizar-OC_Comms_skill.md modo top_campaigns WORST"
+    },
+    {
+      "id":          "sub_canal_decay_chain",
+      "description": "Caída en cascada: sub_canal cae >20% Y hay campaña conocida con status CANIBALIZADOR",
+      "trigger_condition": {
+        "sub_canal_corp_delta_mom": "< -0.20",
+        "known_campaign_status":    "CANIBALIZADOR_CONFIRMADO"
+      },
+      "severity":    "CRÍTICO",
+      "action":      "PAUSAR campaña confirmada + reportar en próximo weekly",
+      "template":    "🔴 ALERTA CRÍTICA: {sub_canal} cae {delta}% MoM. Campaña canibalizadora confirmada activa: {campaigns}. PAUSAR y calcular recovery esperado.",
+      "escalate_to": "OPTIMIZADOR-OC_skill.md"
+    },
+    {
+      "id":          "journey_daily_positive_ok",
+      "description": "Journey trigger-based (semanal o día específico) con USER_INC positivo — mantener",
+      "trigger_condition": {
+        "medio_corp": "JOURNEY",
+        "cadencia":   ["SEMANAL_MIERCOLES", "TRIGGER_BASED"],
+        "user_inc_7d": "> 0"
+      },
+      "severity":    "INFO",
+      "action":      "MANTENER — buscar oportunidad de escalar reach",
+      "template":    "🟢 Journey '{campaign}' trigger-based con USER_INC positivo → candidato a escalar. Revisar reach actual vs audiencia disponible."
+    }
+  ],
+
+  "drill_down_protocol": {
+    "_doc": "Protocolo automático para conectar KPI decline → campaigns responsables. Invocado por OPTIMIZADOR-OC_skill.md cuando detecta caída en OC+UCR.",
+
+    "steps": [
+      {
+        "step": 1,
+        "name": "Identificar sub_canal más afectado",
+        "data_source": "dashboard Corp — tabla NR Mensual Detalle Corporativo",
+        "output": "sub_canal_corp con mayor caída absoluta MoM",
+        "example": "OWN CHANNELS RECURRING: -17,637 (-29.1%)"
+      },
+      {
+        "step": 2,
+        "name": "Identificar medio más afectado dentro del sub_canal",
+        "data_source": "dashboard Corp — expandir sub_canal → ver medios",
+        "output": "medio_corp con mayor caída MoM",
+        "example": "JOURNEY: -10,253 (-137.9%)"
+      },
+      {
+        "step": 3,
+        "name": "Traducir medio → regla de clasificación",
+        "data_source": "comms_classification_config.json → name_classification_rules",
+        "output": "rule_id + tokens_include para filtrar Comms_OC",
+        "example": "rule_id=journey_activation → buscar CANAL='JOURNEY' en Comms_OC"
+      },
+      {
+        "step": 4,
+        "name": "Verificar campañas conocidas con status CANIBALIZADOR",
+        "data_source": "comms_classification_config.json → known_campaigns",
+        "output": "lista de campañas confirmadas + acción recomendada",
+        "example": "CARABO + MST2MP → PAUSAR HOY"
+      },
+      {
+        "step": 5,
+        "name": "Filtrar Comms_OC por medio y ordenar por USER_INC ASC",
+        "data_source": "Pestaña Comms_OC del dashboard → filtrar CANAL=JOURNEY",
+        "output": "ranking de campañas con mayor USER_INC negativo",
+        "query_hint": "SELECT JOURNEY_NAME, SUM(INC_USERS) FROM BT_OC_MP_FLOWS_DAILY WHERE FLOW IN ('APP-MP-INSTALL') GROUP BY 1 ORDER BY 2 ASC"
+      },
+      {
+        "step": 6,
+        "name": "Generar alerta y recomendación",
+        "data_source": "comms_classification_config.json → alert_rules",
+        "output": "alerta con severity + action + NR recovery estimado",
+        "example": "alert_rule_id=journey_canibalizador → PAUSAR CARABO + MST2MP → recovery estimado +[X] NR/mes"
+      }
+    ],
+
+    "output_template": {
+      "_doc": "Formato estándar del output del drill-down para ser consumido por OPTIMIZADOR-OC_skill.md",
+      "template": "## DRILL-DOWN AUTOMÁTICO: {canal} ▼{delta_pct}% MoM\n\nNIVEL 1 — Sub-canal más afectado: {sub_canal} ({delta_abs} NR, {delta_pct}%)\nNIVEL 2 — Medio más afectado: {medio} ({medio_delta_abs} NR, {medio_delta_pct}%)\nNIVEL 3 — Campañas responsables:\n{campaigns_list}\n\n## ALERTA GENERADA\n{alert_message}\n\n## ACCIÓN RECOMENDADA\n{action}\nRecovery estimado si se pausa: +{recovery_nr} NR/mes [confianza: {confidence}]"
+    }
+  },
+
+  "cadencia_definitions": {
+    "_doc": "Definiciones de cadencia para clasificar journeys. La cadencia DIARIA es el principal factor de riesgo de canibalización.",
+    "DIARIA":             { "riesgo": "ALTO",  "descripcion": "Journey corre todos los días → satura audiencia rápido → USER_INC tiende a negativo en 7+ días" },
+    "SEMANAL_MIERCOLES":  { "riesgo": "BAJO",  "descripcion": "Journey trigger-based miércoles — patrón ganador histórico (§61 History.md)" },
+    "TRIGGER_BASED":      { "riesgo": "BAJO",  "descripcion": "Journey que corre solo cuando el usuario hace una acción específica (postcompra, drop-funnel, etc.)" },
+    "QUINCENAL":          { "riesgo": "MEDIO", "descripcion": "Journey de quincena — timing codificado en nombre (QUIN)" },
+    "PUNTUAL":            { "riesgo": "BAJO",  "descripcion": "Journey de evento único (Buen Fin, Hot Sale, etc.)" }
+  },
+
+  "metric_equivalences": {
+    "_doc": "Equivalencias métricas críticas entre vistas del dashboard. LEER ANTES de cualquier análisis cruzado.",
+
+    "USER_INC_equals_NR_for_OC_UCR": {
+      "regla":       "USER_INC de Comms_OC ≡ N+R para el canal OC+UCR",
+      "descripcion": "Para el canal OC+UCR (Ucrania E&G, OWN CHANNELS RECURRING, ADHOC, UCR PRD), el USER_INC de las comunicaciones en Comms_OC es la métrica más cercana al N+R incremental reportado en el dashboard Corp/FM. Las campañas de OC usan lift Test−Control (NR_INC_USERS) o 7D_Adjust, que son exactamente la misma metodología que el dashboard usa para acreditar N+R a este canal.",
+      "implicaciones": [
+        "Una caída en USER_INC de las comms del sub-canal EXPLICA directamente la caída en N+R Corp de ese sub-canal",
+        "Si USER_INC Comms sube pero N+R Corp baja → hay campañas fuera de Comms_OC no capturadas (ej. Pandora agregado en Torre Daily)",
+        "Si USER_INC Comms está estable pero N+R Corp cae → revisar si hay campañas excluidas por filtros o con STRATEGY no capturada",
+        "SIEMPRE comparar MTD vs mismo período mes anterior (D1-Dref), no mes completo vs mes completo"
+      ],
+      "caveat":      "OC Pandora: su NR va a Torre Daily (CANAL='PANDORA') agregado, no a nivel campaña individual en Comms_OC. Pandora campaigns con CANAL='PANDORA' (V2) sí tienen USER_INC disponible.",
+      "history_ref": "§83 History.md — validado con datos May vs Abr 2026 (UCRANIA E&G: Comms -73% ≈ Corp -63.7%)"
+    },
+
+    "MTD_comparison_rule": {
+      "regla":       "Comparar SIEMPRE los mismos días del mes (D1-Dref), no mes completo",
+      "descripcion": "Para comparar desempeño MoM de campañas en Comms_OC, filtrar SENT_DATE entre día 1 y el día de referencia (D-1) para AMBOS meses. Nunca comparar mes actual parcial vs mes anterior completo.",
+      "ejemplo":     "May D1-D3 vs Abr D1-D3 (no May D1-D3 vs Abr completo 1-30)"
+    }
+  },
+
+  "corp_subcanal_rules": {
+    "_doc": "Reglas para derivar CLASIFF_FINAL_CORP (sub-canal vista Corporativa) desde campos de Comms_OC. Aplicar en orden de prioridad (menor = más prioritario). Fuente: lógica confirmada por equipo §83.",
+    "_usage": "En builders.py: _classify_corp_subcanal(strategy, team, clasif_campaigns). En el skill: usar data-corpsubcanal para cruzar Comms_OC con vista Corp del dashboard.",
+
+    "rules": [
+      {
+        "priority":   1,
+        "id":         "ucr_prd",
+        "condition":  "STRATEGY in ('UCRANIA','ACQUISITION') AND TEAM contains CREDITS or OTHERS",
+        "result_corp": "UCR PRD (sub-canal de OTHERS Corp)",
+        "result_fm":   "UCR PRD",
+        "_note": "UCR PRD — producto recurrente. TEAM = CREDITS o OTHERS."
+      },
+      {
+        "priority":   2,
+        "id":         "adhoc_clasif_ucrania",
+        "condition":  "'ADHOC' in TEAM AND CLASIF_CAMPAIGNS == 'UCRANIA'",
+        "result_corp": "OWN CHANNELS ADHOC",
+        "result_fm":   null,
+        "_note": "ADHOC con CLASIF=UCRANIA → sub-canal ADHOC (campañas UCR ad-hoc)"
+      },
+      {
+        "priority":   3,
+        "id":         "adhoc_clasif_no_ucrania",
+        "condition":  "'ADHOC' in TEAM AND CLASIF_CAMPAIGNS != 'UCRANIA'",
+        "result_corp": "OWN CHANNELS RECURRING",
+        "result_fm":   null,
+        "_note": "ADHOC con CLASIF≠UCRANIA → RECURRING (campañas ACT/RE-ACT ad-hoc)"
+      },
+      {
+        "priority":   4,
+        "id":         "ucrania_strategy",
+        "condition":  "STRATEGY == 'UCRANIA'",
+        "result_corp": "UCRANIA E&G",
+        "result_fm":   null,
+        "_note": "UCRANIA = E&G en Corp. Aplica con NOTIF=RECURRING/VACÍO o SUBSTRAT=UCRANIA."
+      },
+      {
+        "priority":   5,
+        "id":         "others_substrat_others",
+        "condition":  "STRATEGY == 'OTHERS' AND SUBSTRATEGY == 'OTHERS'",
+        "result_corp": "OWN CHANNELS RECURRING",
+        "result_fm":   "OC ACT",
+        "_note": "OTHERS con SUBSTRATEGY=OTHERS = journeys UCR → RECURRING"
+      },
+      {
+        "priority":   6,
+        "id":         "activation_recurring",
+        "condition":  "STRATEGY in ('ACTIVATION', 'RE-ACTIVATION')",
+        "result_corp": "OWN CHANNELS RECURRING",
+        "result_fm":   "OC ACT",
+        "_note": "ACTIVATION y RE-ACTIVATION = canales recurrentes OC"
+      },
+      {
+        "priority":   7,
+        "id":         "fm_ucr_gest",
+        "condition":  "STRATEGY in ('UCRANIA','ACQUISITION') AND TEAM contains ADHOC or INDIVIDUALS",
+        "result_corp": null,
+        "result_fm":   "UCR GEST",
+        "_note": "Para FM: UCRANIA/ACQUISITION con ADHOC o INDIVIDUALS = UCR Gest gestionable"
+      },
+      {
+        "priority":   8,
+        "id":         "fm_oc_act",
+        "condition":  "STRATEGY in ('ACTIVATION','OTHERS','RE-ACTIVATION')",
+        "result_corp": null,
+        "result_fm":   "OC ACT",
+        "_note": "Para FM: ACTIVATION/OTHERS/RE-ACTIVATION = OC ACT"
+      }
+    ],
+
+    "decline_diagnosis_signals": {
+      "_doc": "Señales para diagnosticar caída en un sub-canal. Verificar en orden.",
+      "1_campaigns_turned_off": {
+        "signal":  "N comms en mes actual < N comms mes anterior para el mismo sub-canal",
+        "action":  "Identificar qué campañas existían antes y ya no están en Comms_OC",
+        "query":   "GROUP BY CAMPAIGN_NAME_CLEAN WHERE mes=prev → anti-join con mes=current"
+      },
+      "2_sents_dropped": {
+        "signal":  "SENTS mes actual < SENTS mes anterior para campañas que siguen activas",
+        "action":  "Reducción de audiencia o envíos — verificar VOLUMEN_SENT",
+        "query":   "SUM(SENTS) GROUP BY CAMPAIGN_NAME_CLEAN, mes"
+      },
+      "3_or_dropped": {
+        "signal":  "OPEN_RATE mes actual < OPEN_RATE mes anterior para campañas activas",
+        "action":  "Fatiga de mensaje o cambio de VP — revisar rotación creativa",
+        "query":   "AVG(OPEN_RATE) GROUP BY CAMPAIGN_NAME_CLEAN, mes"
+      },
+      "4_user_inc_dropped": {
+        "signal":  "USER_INC mes actual < USER_INC mes anterior (mismas campañas activas)",
+        "action":  "Degradación de lift — posible saturación de audiencia o calibrador",
+        "query":   "SUM(USER_INC) GROUP BY CAMPAIGN_NAME_CLEAN, mes"
+      }
+    }
+  },
+
+  "update_log": [
+    {
+      "version":    "1.1",
+      "date":       "2026-05-05",
+      "author":     "sergio.ibarra + Claude Code",
+      "changes":    "§83: Añadida sección corp_subcanal_rules con reglas formales para CLASIFF_FINAL_CORP/FM. Señales de diagnóstico de caída por sub-canal. Usada por builders.py para columna derivada y por analizar-OC_Comms_skill.md para insights.",
+      "history_ref": "§83 History.md"
+    },
+    {
+      "version":    "1.0",
+      "date":       "2026-04-25",
+      "author":     "sergio.ibarra + Claude Code",
+      "changes":    "Versión inicial. Reglas base para JOURNEY/ADHOC/UCRANIA E&G/ACTIVATION. Known campaigns: CARABO, MST2MP, flows_mer (confirmados con datos Abril 2026). Alert rules: journey_canibalizador + medio_declining_30pct.",
+      "history_ref": "§73 History.md"
+    }
+  ]
+}

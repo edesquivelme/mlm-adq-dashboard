@@ -1,0 +1,18 @@
+# Python
+vEnv_ADQ_Dash/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Archivos generados — demasiado grandes para git
+dashboard_v1.html
+
+# Cache de datos — regenerables con scripts/refresh_comms_oc_cache.py
+data/comms_oc_cache.json
+data/comms_oc_current_month.json
+
+# OS
+.DS_Store
+Thumbs.db

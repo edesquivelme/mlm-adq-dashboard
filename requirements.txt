@@ -1,0 +1,17 @@
+# ─────────────────────────────────────────────────────────────
+# MLM ADQ N+R Dashboard - Dependencias de Python
+# ─────────────────────────────────────────────────────────────
+
+# --- Análisis de Datos y Gráficas ---
+pandas
+openpyxl
+plotly
+
+# --- Conexión a Google BigQuery ---
+google-cloud-bigquery
+db-dtypes
+
+# --- Autenticación y Google Apps Script API ---
+google-auth
+google-auth-oauthlib
+google-api-python-client

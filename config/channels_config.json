@@ -1,0 +1,1977 @@
+{
+  "hierarchy_nr": [
+    {
+      "id": "total_nr",
+      "label": "Total N+R",
+      "level": "grand",
+      "indent": 0,
+      "color": "#2D3277",
+      "plan_row": 4,
+      "plan_row_valor": 50,
+      "plan_row_inv": 80,
+      "is_leaf": false,
+      "children": [
+        "oc_ucr",
+        "pom_total",
+        "mgm_total",
+        "lp_total",
+        "org"
+      ]
+    },
+    {
+      "id": "oc_ucr",
+      "label": "OC + UCR",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#5899D1",
+      "plan_row_valor": 52,
+      "plan_row_inv": 82,
+      "is_leaf": false,
+      "parent": "total_nr",
+      "children": [
+        "ucrania",
+        "oc_act"
+      ],
+      "plan_lines": [
+        {
+          "label": "Plan Recurring",
+          "rows": [
+            6
+          ],
+          "color": "#5899D1"
+        },
+        {
+          "label": "Plan Ad-Hoc",
+          "rows": [
+            10
+          ],
+          "color": "#86C9C4"
+        },
+        {
+          "label": "Plan Producto",
+          "rows": [
+            17
+          ],
+          "color": "#1AB059",
+          "no_chart": true,
+          "multiplier": 0.5
+        }
+      ]
+    },
+    {
+      "id": "ucrania",
+      "label": "Ucrania (Gest+PRD)",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#1AB059",
+      "is_leaf": false,
+      "parent": "oc_ucr",
+      "children": [
+        "ucr_gest",
+        "ucr_prd"
+      ]
+    },
+    {
+      "id": "ucr_gest",
+      "label": "UCR Gest",
+      "level": "leaf",
+      "indent": 3,
+      "color": "#5899D1",
+      "is_leaf": true,
+      "parent": "ucrania",
+      "bq_mapping": {
+        "strategy": "ACQUISITION",
+        "channel": "OWN CHANNELS MKT"
+      },
+      "tc_mapping": {
+        "source_tc": "torre_daily",
+        "clasificacion_tc": [
+          "UCRANIA"
+        ]
+      }
+    },
+    {
+      "id": "ucr_prd",
+      "label": "UCR PRD",
+      "level": "leaf",
+      "indent": 3,
+      "color": "#1AB059",
+      "is_leaf": true,
+      "parent": "ucrania",
+      "bq_mapping": {
+        "strategy": "ACQUISITION",
+        "channel": "OWN CHANNELS PRD"
+      },
+      "tc_mapping": {
+        "source_tc": "torre_daily",
+        "clasificacion_tc": [
+          "OTHER RECURRING"
+        ]
+      }
+    },
+    {
+      "id": "oc_act",
+      "label": "OC ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#E1484C",
+      "plan_row_inv": 87,
+      "is_leaf": true,
+      "parent": "oc_ucr",
+      "bq_mapping": {
+        "strategy": [
+          "ACTIVATION",
+          "OTHER"
+        ],
+        "channel": [
+          "OWN CHANNELS MKT",
+          "ADHOC"
+        ]
+      },
+      "tc_mapping": {
+        "source_tc": "torre_daily",
+        "clasificacion_tc": [
+          "ACTIVATION",
+          "ADHOC"
+        ]
+      }
+    },
+    {
+      "id": "pom_total",
+      "label": "POM TOTAL",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#2F9E8F",
+      "plan_row_inv": 81,
+      "is_leaf": false,
+      "parent": "total_nr",
+      "children": [
+        "pom_adq",
+        "pom_act",
+        "pom_others"
+      ],
+      "plan_lines": [
+        {
+          "label": "Plan POM no gest.",
+          "rows": [
+            9
+          ],
+          "color": "#7ECBBF"
+        }
+      ],
+      "plan_rows": [
+        5,
+        9
+      ]
+    },
+    {
+      "id": "pom_adq",
+      "label": "POM ADQ",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#2F9E8F",
+      "is_leaf": true,
+      "parent": "pom_total",
+      "bq_mapping": {
+        "strategy": "ACQUISITION",
+        "channel": [
+          "ACQUISITION POM",
+          "WEB POM",
+          "CTW POM",
+          "ACTIVATION POM",
+          "POM OTHERS",
+          "POM SELLERS"
+        ]
+      },
+      "tc_mapping": {
+        "source_tc": "individuals_performance",
+        "strategy_group_tc": [
+          "ACQUISITION POM"
+        ]
+      }
+    },
+    {
+      "id": "pom_act",
+      "label": "POM ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#86C9C4",
+      "is_leaf": true,
+      "parent": "pom_total",
+      "bq_mapping": {
+        "strategy": [
+          "ACTIVATION",
+          "OTHER"
+        ],
+        "channel": [
+          "ACTIVATION POM",
+          "WEB POM",
+          "CTW POM",
+          "POM OTHERS",
+          "POM SELLERS"
+        ]
+      },
+      "tc_mapping": {
+        "source_tc": "individuals_performance",
+        "strategy_group_tc": [
+          "ACTIVATION POM"
+        ]
+      }
+    },
+    {
+      "id": "pom_others",
+      "label": "POM Others",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#7ECBBF",
+      "is_leaf": true,
+      "parent": "pom_total",
+      "tc_mapping": {
+        "source_tc": "individuals_performance",
+        "strategy_group_tc": [
+          "WEB POM",
+          "CTW POM"
+        ]
+      }
+    },
+    {
+      "id": "mgm_total",
+      "label": "MGM TOTAL",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#F5A664",
+      "plan_row": 13,
+      "plan_row_valor": 59,
+      "plan_row_inv": 88,
+      "is_leaf": false,
+      "parent": "total_nr",
+      "children": [
+        "mgm_adq",
+        "mgm_act"
+      ]
+    },
+    {
+      "id": "mgm_adq",
+      "label": "MGM ADQ",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#F5A664",
+      "plan_row_valor": 61,
+      "is_leaf": true,
+      "parent": "mgm_total",
+      "bq_mapping": {
+        "strategy": "ACQUISITION",
+        "channel": "MGM"
+      },
+      "tc_mapping": {
+        "source_tc": "individuals_performance",
+        "network_group_name_tc": [
+          "MGM",
+          "MGM ECOSISTEMICO"
+        ],
+        "source_cd_filter_tc": [
+          "INSTALLS"
+        ]
+      }
+    },
+    {
+      "id": "mgm_act",
+      "label": "MGM ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#F7C297",
+      "plan_row_valor": 60,
+      "is_leaf": true,
+      "parent": "mgm_total",
+      "bq_mapping": {
+        "strategy": [
+          "ACTIVATION",
+          "OTHER"
+        ],
+        "channel": "MGM"
+      },
+      "tc_mapping": {
+        "source_tc": "individuals_performance",
+        "strategy_group_tc": [
+          "ACTIVATION MGM"
+        ]
+      }
+    },
+    {
+      "id": "lp_total",
+      "label": "L&P TOTAL",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#7A41ED",
+      "plan_row": 16,
+      "plan_row_valor": 62,
+      "is_leaf": false,
+      "parent": "total_nr",
+      "children": [
+        "lp_adq",
+        "lp_act"
+      ]
+    },
+    {
+      "id": "lp_adq",
+      "label": "L&P ADQ",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#7A41ED",
+      "is_leaf": true,
+      "parent": "lp_total",
+      "bq_mapping": {
+        "strategy": "ACQUISITION",
+        "channel": [
+          "BRANDFORMANCE",
+          "OTHERS",
+          "PARTNERSHIPS",
+          "LANDINGS",
+          "AFFILIATES"
+        ]
+      },
+      "tc_mapping": {
+        "source_tc": "individuals_performance",
+        "network_group_name_tc": [
+          "LANDINGS",
+          "TELCEL",
+          "AFFILIATES",
+          "PARTNERSHIPS",
+          "BRANDFORMANCE",
+          "BLUE MONEY",
+          "FACEBOOK CONVERSIONES",
+          "FACEBOOK DABA",
+          "WINCLAP APP ENGAGEMENT"
+        ],
+        "source_cd_filter_tc": [
+          "INSTALLS"
+        ]
+      }
+    },
+    {
+      "id": "lp_act",
+      "label": "L&P ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#BE9FE1",
+      "is_leaf": true,
+      "parent": "lp_total",
+      "bq_mapping": {
+        "strategy": "ACTIVATION",
+        "channel": [
+          "BRANDFORMANCE",
+          "OTHERS",
+          "PARTNERSHIPS",
+          "LANDINGS"
+        ]
+      },
+      "tc_mapping": {
+        "source_tc": "individuals_performance",
+        "network_group_name_tc": [
+          "LANDINGS",
+          "TELCEL",
+          "AFFILIATES",
+          "PARTNERSHIPS",
+          "BRANDFORMANCE",
+          "BLUE MONEY",
+          "FACEBOOK CONVERSIONES",
+          "FACEBOOK DABA",
+          "WINCLAP APP ENGAGEMENT"
+        ],
+        "source_cd_filter_tc": [
+          "TOOL_COST"
+        ]
+      }
+    },
+    {
+      "id": "org",
+      "label": "ORG",
+      "level": "leaf",
+      "indent": 1,
+      "color": "#A4ACB9",
+      "plan_row": 18,
+      "plan_row_valor": 64,
+      "is_leaf": true,
+      "parent": "total_nr",
+      "tc_mapping": {
+        "source_tc": "baseline_skipped",
+        "_note": "§76: ORG = NOT NETWORK APPE + SOURCE_CD=TOOL_COST desde BT_MP_INDIVIDUALS_PERFORMANCE. CTE dedicado en get_nr_tc_sql() (baseline_skipped branch). Sin CASE WHEN compartido → sin riesgo de intercepción por POM Others."
+      },
+      "_bq_mapping_deprecated": {
+        "is_org": true,
+        "_note": "§71 deprecated: reemplazado por tc_mapping. No usar."
+      }
+    }
+  ],
+  "hierarchy_cost": [
+    {
+      "id": "total_inv",
+      "label": "Total Inversión",
+      "level": "grand",
+      "indent": 0,
+      "color": "#2D3277",
+      "is_leaf": false,
+      "children": [
+        "oc_ucr_c",
+        "pom_total_c",
+        "mgm_total_c",
+        "lp_total_c",
+        "org_c"
+      ]
+    },
+    {
+      "id": "oc_ucr_c",
+      "label": "OC + UCR",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#5899D1",
+      "is_leaf": false,
+      "parent": "total_inv",
+      "children": [
+        "ucrania_c",
+        "oc_act_c"
+      ]
+    },
+    {
+      "id": "ucrania_c",
+      "label": "Ucrania (Gest+PRD)",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#1AB059",
+      "is_leaf": false,
+      "parent": "oc_ucr_c",
+      "children": [
+        "ucr_gest_c",
+        "ucr_prd_c"
+      ]
+    },
+    {
+      "id": "ucr_gest_c",
+      "label": "UCR Gest",
+      "level": "leaf",
+      "indent": 3,
+      "color": "#5899D1",
+      "is_leaf": true,
+      "parent": "ucrania_c",
+      "cost_mapping": {
+        "channel": "OWN CHANNELS MKT",
+        "strategy": [
+          "UCRANIA"
+        ]
+      }
+    },
+    {
+      "id": "ucr_prd_c",
+      "label": "UCR PRD",
+      "level": "leaf",
+      "indent": 3,
+      "color": "#1AB059",
+      "is_leaf": true,
+      "parent": "ucrania_c",
+      "no_cost": true
+    },
+    {
+      "id": "oc_act_c",
+      "label": "OC ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#E1484C",
+      "is_leaf": true,
+      "parent": "oc_ucr_c",
+      "cost_mapping": {
+        "channel": "OWN CHANNELS MKT",
+        "strategy": [
+          "ACTIVATION",
+          "ACTIVATION_OTHER_TEAM"
+        ],
+        "gest_others_strategies": [
+          "ACTIVATION_OTHER_TEAM"
+        ]
+      }
+    },
+    {
+      "id": "pom_total_c",
+      "label": "POM TOTAL",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#2F9E8F",
+      "is_leaf": false,
+      "parent": "total_inv",
+      "children": [
+        "pom_adq_c",
+        "pom_act_c",
+        "pom_web_c",
+        "pom_ctw_c",
+        "pom_others_c"
+      ]
+    },
+    {
+      "id": "pom_adq_c",
+      "label": "POM ADQ",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#2F9E8F",
+      "is_leaf": true,
+      "parent": "pom_total_c",
+      "cost_mapping": {
+        "channel": "POM",
+        "strategy": [
+          "ACQUISITION POM"
+        ]
+      }
+    },
+    {
+      "id": "pom_act_c",
+      "label": "POM ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#86C9C4",
+      "is_leaf": true,
+      "parent": "pom_total_c",
+      "cost_mapping": {
+        "channel": "POM",
+        "strategy": [
+          "ACTIVATION POM"
+        ]
+      }
+    },
+    {
+      "id": "pom_others_c",
+      "label": "POM Others",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#7ECBBF",
+      "is_leaf": true,
+      "parent": "pom_total_c",
+      "cost_mapping": {
+        "channel": "POM",
+        "strategy": [
+          "WEB POM",
+          "CTW POM"
+        ]
+      }
+    },
+    {
+      "id": "pom_web_c",
+      "label": "WEB POM",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#4E9F8A",
+      "is_leaf": true,
+      "parent": "pom_total_c",
+      "cost_mapping": {
+        "channel": "POM",
+        "strategy": [
+          "WEB POM"
+        ]
+      }
+    },
+    {
+      "id": "pom_ctw_c",
+      "label": "CTW POM",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#7ECBBF",
+      "is_leaf": true,
+      "parent": "pom_total_c",
+      "cost_mapping": {
+        "channel": "POM",
+        "strategy": [
+          "CTW POM"
+        ]
+      }
+    },
+    {
+      "id": "mgm_total_c",
+      "label": "MGM TOTAL",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#F5A664",
+      "is_leaf": false,
+      "parent": "total_inv",
+      "children": [
+        "mgm_adq_c",
+        "mgm_act_c"
+      ]
+    },
+    {
+      "id": "mgm_adq_c",
+      "label": "MGM ADQ",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#F5A664",
+      "is_leaf": true,
+      "parent": "mgm_total_c",
+      "cost_mapping": {
+        "channel": "MGM",
+        "strategy": [
+          "ADQUISITION"
+        ]
+      }
+    },
+    {
+      "id": "mgm_act_c",
+      "label": "MGM ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#F7C297",
+      "is_leaf": true,
+      "parent": "mgm_total_c",
+      "no_cost": true
+    },
+    {
+      "id": "lp_total_c",
+      "label": "L&P TOTAL",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#7A41ED",
+      "is_leaf": false,
+      "parent": "total_inv",
+      "children": [
+        "lp_adq_c",
+        "lp_act_c"
+      ]
+    },
+    {
+      "id": "lp_adq_c",
+      "label": "L&P ADQ",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#7A41ED",
+      "is_leaf": true,
+      "parent": "lp_total_c",
+      "no_cost": true
+    },
+    {
+      "id": "lp_act_c",
+      "label": "L&P ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#BE9FE1",
+      "is_leaf": true,
+      "parent": "lp_total_c",
+      "no_cost": true
+    },
+    {
+      "id": "org_c",
+      "label": "ORG",
+      "level": "leaf",
+      "indent": 1,
+      "color": "#A4ACB9",
+      "is_leaf": true,
+      "parent": "total_inv",
+      "no_cost": true
+    }
+  ],
+  "visuals": {
+    "cpa_line_color": "#E8C472",
+    "avg_line_style": "dash"
+  },
+  "hierarchy_nr_corp": [
+    {
+      "_doc": "Jerarquía N+R basada en la estructura real de PANEL_MONTHLY_DAILY_HISTORICO (schema abr-2026). bq_mapping.channel = valores de CHANNEL_APERTURA_3. ap1/ap2 son campos de referencia documental — no consumidos por queries.py.",
+      "id": "total_nr",
+      "label": "Total N+R",
+      "level": "grand",
+      "indent": 0,
+      "color": "#2D3277",
+      "plan_row": 4,
+      "plan_row_valor": 50,
+      "plan_row_inv": 80,
+      "is_leaf": false,
+      "children": [
+        "oc_ucr",
+        "pom_total",
+        "mgm_total",
+        "lp_total",
+        "org"
+      ]
+    },
+    {
+      "id": "oc_ucr",
+      "label": "OC + UCR",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#5899D1",
+      "plan_row_valor": 52,
+      "plan_row_inv": 82,
+      "is_leaf": false,
+      "parent": "total_nr",
+      "children": [
+        "ucrania",
+        "oc_act"
+      ],
+      "plan_lines": [
+        {
+          "label": "Plan Recurring",
+          "rows": [
+            6
+          ],
+          "color": "#5899D1"
+        },
+        {
+          "label": "Plan Ad-Hoc",
+          "rows": [
+            10
+          ],
+          "color": "#86C9C4"
+        },
+        {
+          "label": "Plan Producto",
+          "rows": [
+            17
+          ],
+          "color": "#1AB059",
+          "no_chart": true
+        }
+      ]
+    },
+    {
+      "id": "ucrania",
+      "label": "Ucrania (Gest+PRD)",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#1AB059",
+      "is_leaf": false,
+      "parent": "oc_ucr",
+      "children": [
+        "ucr_gest",
+        "ucr_prd"
+      ]
+    },
+    {
+      "_doc": "UCR Gest: AP1=OC, AP2=UCRANIA E&G, AP3=OWN CHANNELS MKT, STRATEGY=ACQUISITION. NOTA: AP3='OWN CHANNELS MKT' también aparece en OC ACT (ACTIVATION) — la separación es por STRATEGY.",
+      "id": "ucr_gest",
+      "label": "UCR Gest",
+      "level": "leaf",
+      "indent": 3,
+      "color": "#5899D1",
+      "plan_row_valor": 54,
+      "is_leaf": true,
+      "parent": "ucrania",
+      "bq_mapping": {
+        "strategy": "ACQUISITION",
+        "channel": "OWN CHANNELS MKT",
+        "ap1": "OC",
+        "ap2": "UCRANIA E&G"
+      }
+    },
+    {
+      "_doc": "UCR PRD: AP1=OTHERS (no OC), AP2=UCRANIA PRD, AP3=OWN CHANNELS PRD, STRATEGY=ACQUISITION. INV=0 (sin inversión directa).",
+      "id": "ucr_prd",
+      "label": "UCR PRD",
+      "level": "leaf",
+      "indent": 3,
+      "color": "#1AB059",
+      "plan_row_valor": 53,
+      "is_leaf": true,
+      "parent": "ucrania",
+      "bq_mapping": {
+        "strategy": "ACQUISITION",
+        "channel": "OWN CHANNELS PRD",
+        "ap1": "OTHERS",
+        "ap2": "UCRANIA PRD"
+      }
+    },
+    {
+      "_doc": "OC ACT cubre dos sub-canales: OC Recurring (AP2=OWN CHANNELS RECURRING, AP3=OWN CHANNELS MKT, INV>0) + OC Ad-Hoc (AP2=OWN CHANNELS ADHOC, AP3=ADHOC, INV=0). Ambos con STRATEGY=ACTIVATION.",
+      "id": "oc_act",
+      "label": "OC ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#E1484C",
+      "plan_row_valor": 56,
+      "plan_row_inv": 87,
+      "is_leaf": true,
+      "parent": "oc_ucr",
+      "bq_mapping": {
+        "strategy": [
+          "ACTIVATION",
+          "OTHER"
+        ],
+        "channel": [
+          "OWN CHANNELS MKT",
+          "ADHOC"
+        ],
+        "ap1": "OC",
+        "ap2_values": [
+          "OWN CHANNELS RECURRING",
+          "OWN CHANNELS ADHOC"
+        ]
+      }
+    },
+    {
+      "id": "pom_total",
+      "label": "POM TOTAL",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#2F9E8F",
+      "plan_row": 5,
+      "plan_row_inv": 81,
+      "is_leaf": false,
+      "parent": "total_nr",
+      "children": [
+        "pom_adq",
+        "pom_act"
+      ],
+      "plan_lines": [
+        {
+          "label": "Plan POM no gest.",
+          "rows": [
+            9
+          ],
+          "color": "#7ECBBF"
+        }
+      ]
+    },
+    {
+      "_doc": "POM ADQ (ACQUISITION). Incluye canales de AP1=POM (ACQUISITION POM, WEB POM, CTW POM) más ACTIVATION POM con STRATEGY=ACQUISITION (22K NR, INV≈0 — adq gestionada vía tácticas de activación). También incluye POM OTHERS y POM SELLERS que viven en AP1=OTHERS.",
+      "id": "pom_adq",
+      "label": "POM ADQ",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#2F9E8F",
+      "plan_row_valor": 51,
+      "is_leaf": true,
+      "parent": "pom_total",
+      "bq_mapping": {
+        "strategy": "ACQUISITION",
+        "channel": [
+          "ACQUISITION POM",
+          "ACTIVATION POM",
+          "CTW POM",
+          "WEB POM",
+          "POM OTHERS",
+          "POM SELLERS"
+        ],
+        "ap1_values": [
+          "POM",
+          "OTHERS"
+        ],
+        "ap2_values": [
+          "ACQUISITION POM",
+          "ACTIVATION POM",
+          "CTW POM",
+          "WEB POM",
+          "POM OTHERS",
+          "POM SELLERS"
+        ]
+      }
+    },
+    {
+      "_doc": "POM ACT (ACTIVATION/OTHER). POM SELLERS solo aparece en ACQUISITION → excluido de ACT. ACTIVATION POM/WEB POM/CTW POM aparecen en ambas estrategias — la separación es por STRATEGY.",
+      "id": "pom_act",
+      "label": "POM ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#86C9C4",
+      "plan_row_valor": 55,
+      "is_leaf": true,
+      "parent": "pom_total",
+      "bq_mapping": {
+        "strategy": [
+          "ACTIVATION",
+          "OTHER"
+        ],
+        "channel": [
+          "ACTIVATION POM",
+          "CTW POM",
+          "WEB POM",
+          "POM OTHERS"
+        ],
+        "ap1_values": [
+          "POM",
+          "OTHERS"
+        ],
+        "ap2_values": [
+          "ACTIVATION POM",
+          "CTW POM",
+          "WEB POM",
+          "POM OTHERS"
+        ]
+      }
+    },
+    {
+      "id": "mgm_total",
+      "label": "MGM TOTAL",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#F5A664",
+      "plan_row": 13,
+      "plan_row_valor": 59,
+      "plan_row_inv": 88,
+      "is_leaf": false,
+      "parent": "total_nr",
+      "children": [
+        "mgm_adq",
+        "mgm_act"
+      ]
+    },
+    {
+      "_doc": "MGM ADQ: AP1=OTHERS, AP2=MGM, AP3=MGM, STRATEGY=ACQUISITION. INV=0 (MGM no tiene inversión directa en DAILY_HISTORICO; su inversión se registra en COSTOS_CANALES).",
+      "id": "mgm_adq",
+      "label": "MGM ADQ",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#F5A664",
+      "plan_row_valor": 61,
+      "is_leaf": true,
+      "parent": "mgm_total",
+      "bq_mapping": {
+        "strategy": "ACQUISITION",
+        "channel": "MGM",
+        "ap1": "OTHERS",
+        "ap2": "MGM"
+      }
+    },
+    {
+      "_doc": "MGM ACT: misma AP3='MGM', STRATEGY=ACTIVATION. NR muy bajo (1K en 2026) — casi sin activación en MGM.",
+      "id": "mgm_act",
+      "label": "MGM ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#F7C297",
+      "plan_row_valor": 60,
+      "is_leaf": true,
+      "parent": "mgm_total",
+      "bq_mapping": {
+        "strategy": [
+          "ACTIVATION",
+          "OTHER"
+        ],
+        "channel": "MGM",
+        "ap1": "OTHERS",
+        "ap2": "MGM"
+      }
+    },
+    {
+      "_doc": "L&P TOTAL incluye los sub-canales de AP2=LP más SEO (AP2=SEO). SEO tiene INV>0 pero volumen bajo (884 NR en 2026).",
+      "id": "lp_total",
+      "label": "L&P TOTAL",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#7A41ED",
+      "plan_row": 16,
+      "plan_row_valor": 62,
+      "is_leaf": false,
+      "parent": "total_nr",
+      "children": [
+        "lp_adq",
+        "lp_act",
+        "seo_adq"
+      ]
+    },
+    {
+      "_doc": "L&P ADQ: AP1=OTHERS, AP2=LP, STRATEGY=ACQUISITION. Incluye AFFILIATES (NR=0 en 2026 pero activo en 2025). PARTNERSHIPS tiene INV=0. LANDINGS tiene INV=0.",
+      "id": "lp_adq",
+      "label": "L&P ADQ",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#7A41ED",
+      "is_leaf": true,
+      "parent": "lp_total",
+      "bq_mapping": {
+        "strategy": "ACQUISITION",
+        "channel": [
+          "BRANDFORMANCE",
+          "OTHERS",
+          "PARTNERSHIPS",
+          "LANDINGS",
+          "AFFILIATES"
+        ],
+        "ap1": "OTHERS",
+        "ap2": "LP"
+      }
+    },
+    {
+      "_doc": "L&P ACT: AP1=OTHERS, AP2=LP, STRATEGY=ACTIVATION. Solo BRANDFORMANCE tiene INV>0 ($3.1M en 2026). OTHERS ACT también tiene inversión ($2.5M).",
+      "id": "lp_act",
+      "label": "L&P ACT",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#BE9FE1",
+      "is_leaf": true,
+      "parent": "lp_total",
+      "bq_mapping": {
+        "strategy": [
+          "ACTIVATION",
+          "OTHER"
+        ],
+        "channel": [
+          "BRANDFORMANCE",
+          "OTHERS",
+          "PARTNERSHIPS",
+          "LANDINGS"
+        ],
+        "ap1": "OTHERS",
+        "ap2": "LP"
+      }
+    },
+    {
+      "_doc": "SEO: AP1=OTHERS, AP2=SEO, AP3=SEO, STRATEGY=ACQUISITION. Canal explícito con INV=$357K en 2026. En el schema anterior iba al catch-all ORG. Se ubica bajo L&P TOTAL por afinidad de gestión.",
+      "id": "seo_adq",
+      "label": "SEO",
+      "level": "leaf",
+      "indent": 2,
+      "color": "#8B6914",
+      "is_leaf": true,
+      "parent": "lp_total",
+      "bq_mapping": {
+        "strategy": "ACQUISITION",
+        "channel": "SEO",
+        "ap1": "OTHERS",
+        "ap2": "SEO"
+      }
+    },
+    {
+      "_doc": "ORG: catch-all ELSE del CASE WHEN. Captura AP1=ORGANICO (ORGANIC ACQ, ORGANIC ACT, OTHER ACT). NOTA: ORGANICO|OTHER|ACTIVATION tiene 1.52M NR y $21.6M INV en 2026 — es la bolsa de atribución orgánica con inversión de retención.",
+      "id": "org",
+      "label": "ORG",
+      "level": "leaf",
+      "indent": 1,
+      "color": "#A4ACB9",
+      "plan_row": 18,
+      "plan_row_valor": 64,
+      "is_leaf": true,
+      "parent": "total_nr",
+      "bq_mapping": {
+        "is_org": true
+      }
+    }
+  ],
+  "hierarchy_nr_corp_detail": [
+    {
+      "_doc": "Jerarquía de 4 niveles basada en AP1/AP2/TOUCHPOINT de PANEL_MONTHLY_DAILY_HISTORICO. Usada por get_nr_corp_sql() + process_nr_corp() + build_nr_corp_table_html(). bq_key solo en nodos hoja (hojas de SQL); nodos padre se propagan bottom-up.",
+      "id": "corp_total",
+      "label": "Total N+R",
+      "level": "grand",
+      "indent": 0,
+      "color": "#2D3277",
+      "is_leaf": false,
+      "children": [
+        "corp_oc_ucr",
+        "corp_pom",
+        "corp_others",
+        "corp_noatrib"
+      ],
+      "corp_plan_nr_key": "Total N+R"
+    },
+    {
+      "id": "corp_oc_ucr",
+      "label": "OC + UCR",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#5899D1",
+      "is_leaf": false,
+      "parent": "corp_total",
+      "children": [
+        "corp_ucr_eg",
+        "corp_oc_recurring",
+        "corp_oc_adhoc"
+      ],
+      "corp_plan_nr_key": "OC + UCR",
+      "_plan_note": "Plan OC+UCR = sum de plan_lines rows 6+10+17 (OC Recurring + OC Adhoc + Others+Producto). UCR Gest, UCR PRD y OC ACT NO tienen plan individual."
+    },
+    {
+      "id": "corp_pom",
+      "label": "POM",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#2F9E8F",
+      "is_leaf": false,
+      "parent": "corp_total",
+      "children": [
+        "corp_acq_pom",
+        "corp_act_pom",
+        "corp_web_pom",
+        "corp_ctw_pom"
+      ],
+      "corp_plan_nr_key": "POM TOTAL",
+      "_plan_note": "Plan POM = fila Excel iloc 5. POM ADQ y POM ACT NO tienen plan individual."
+    },
+    {
+      "id": "corp_others",
+      "label": "OTHERS",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#888888",
+      "is_leaf": false,
+      "parent": "corp_total",
+      "children": [
+        "corp_mgm",
+        "corp_lp",
+        "corp_ucr_prd",
+        "corp_seo",
+        "corp_pom_sellers",
+        "corp_pom_others"
+      ],
+      "_plan_note": "OTHERS no tiene plan total directo en el Excel. Solo MGM (row 13) y L&P (row 16) tienen plan a nivel sub-canal."
+    },
+    {
+      "_doc": "NO ATRIBUIDO = usuarios orgánicos sin atribución a canal de red. §75: Fuente TC BT_MP_INDIVIDUALS_PERFORMANCE (NETWORK_GROUP_NAME='NOT NETWORK APPE', CHANNEL_GROUP='OTHER', SOURCE_CD='TOOL_COST'). Misma fuente que ORG en vista FM. Validado: ~600-700K NR/mes en 2026.",
+      "id": "corp_noatrib",
+      "label": "NO ATRIBUIDO",
+      "level": "sub1",
+      "indent": 1,
+      "color": "#A4ACB9",
+      "is_leaf": true,
+      "parent": "corp_total",
+      "bq_key": "NOATRIB|ORGANICO|TOTAL",
+      "corp_plan_nr_key": "ORG",
+      "_plan_note": "Plan ORG = fila Excel iloc 18 (No Atribuido / Organico)."
+    },
+    {
+      "_doc": "UCRANIA E&G: AP1=OC, AP2=UCRANIA E&G, STRATEGY=ACQUISITION. Medios: EMAIL(+SMS absorbido), PANDORA, PUSH, REAL ESTATES (grupo RE-*), WPP.",
+      "id": "corp_ucr_eg",
+      "label": "UCRANIA E&G",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#5899D1",
+      "is_leaf": false,
+      "parent": "corp_oc_ucr",
+      "children": [
+        "corp_ucr_eg_email",
+        "corp_ucr_eg_pandora",
+        "corp_ucr_eg_push",
+        "corp_ucr_eg_real_estates",
+        "corp_ucr_eg_wpp"
+      ]
+    },
+    {
+      "_doc": "OWN CHANNELS RECURRING: AP1=OC, AP2=OWN CHANNELS RECURRING, STRATEGY=ACTIVATION. Medios: EMAIL, JOURNEY, PANDORA, PUSH (dominante 979K NR), WPP.",
+      "id": "corp_oc_recurring",
+      "label": "OWN CHANNELS RECURRING",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#4A80C4",
+      "is_leaf": false,
+      "parent": "corp_oc_ucr",
+      "children": [
+        "corp_oc_rec_email",
+        "corp_oc_rec_journey",
+        "corp_oc_rec_pandora",
+        "corp_oc_rec_push",
+        "corp_oc_rec_wpp"
+      ]
+    },
+    {
+      "_doc": "OWN CHANNELS ADHOC: AP1=OC, AP2=OWN CHANNELS ADHOC, STRATEGY=ACTIVATION. Sin breakdown de medios (EMAIL+PUSH combinados, INV=0).",
+      "id": "corp_oc_adhoc",
+      "label": "OWN CHANNELS ADHOC",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#E1484C",
+      "is_leaf": true,
+      "parent": "corp_oc_ucr",
+      "bq_key": "OC|OC_ADHOC|TOTAL"
+    },
+    {
+      "_doc": "ACQUISITION POM: AP1=POM, AP2=ACQUISITION POM, STRATEGY=ACQUISITION.",
+      "id": "corp_acq_pom",
+      "label": "ACQUISITION POM",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#2F9E8F",
+      "is_leaf": true,
+      "parent": "corp_pom",
+      "bq_key": "POM|ACQ_POM|TOTAL"
+    },
+    {
+      "_doc": "ACTIVATION POM: AP1=POM, AP2=ACTIVATION POM. Cubre STRATEGY=ACQUISITION (57K NR) + STRATEGY=ACTIVATION (722K NR). Ambas bajo mismo AP2.",
+      "id": "corp_act_pom",
+      "label": "ACTIVATION POM",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#86C9C4",
+      "is_leaf": true,
+      "parent": "corp_pom",
+      "bq_key": "POM|ACT_POM|TOTAL"
+    },
+    {
+      "_doc": "WEB POM: AP1=POM, AP2=WEB POM. Ambas strategies (ACQ+ACT).",
+      "id": "corp_web_pom",
+      "label": "WEB POM",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#4E9F8A",
+      "is_leaf": true,
+      "parent": "corp_pom",
+      "bq_key": "POM|WEB_POM|TOTAL"
+    },
+    {
+      "_doc": "CTW POM: AP1=POM, AP2=CTW POM. Ambas strategies. Volumen bajo (~900 NR en 2025+2026).",
+      "id": "corp_ctw_pom",
+      "label": "CTW POM",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#7ECBBF",
+      "is_leaf": true,
+      "parent": "corp_pom",
+      "bq_key": "POM|CTW_POM|TOTAL"
+    },
+    {
+      "_doc": "MGM: AP1=OTHERS, AP2=MGM. ACQ+ACT. INV=0 en DAILY_HISTORICO.",
+      "id": "corp_mgm",
+      "label": "MGM",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#F5A664",
+      "is_leaf": true,
+      "parent": "corp_others",
+      "bq_key": "OTH|MGM|TOTAL",
+      "corp_plan_nr_key": "MGM TOTAL"
+    },
+    {
+      "_doc": "L&P: AP1=OTHERS, AP2=LP. Desagregado por CHANNEL_APERTURA_3 (6 sub-canales). Padre no-hoja — sum bottom-up de hijos.",
+      "id": "corp_lp",
+      "label": "L&P",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#7A41ED",
+      "is_leaf": false,
+      "parent": "corp_others",
+      "children": [
+        "corp_lp_brandformance",
+        "corp_lp_landings",
+        "corp_lp_partnerships",
+        "corp_lp_others",
+        "corp_lp_gtm",
+        "corp_lp_affiliates"
+      ],
+      "corp_plan_nr_key": "L&P TOTAL"
+    },
+    {
+      "_doc": "L&P sub-canal: BRANDFORMANCE — ACQ+ACT. Mayor inversión dentro de L&P.",
+      "id": "corp_lp_brandformance",
+      "label": "BRANDFORMANCE",
+      "level": "medio",
+      "indent": 3,
+      "color": "#7A41ED",
+      "is_leaf": true,
+      "parent": "corp_lp",
+      "bq_key": "OTH|LP|BRANDFORMANCE"
+    },
+    {
+      "_doc": "L&P sub-canal: LANDINGS — solo ACQUISITION, INV=0.",
+      "id": "corp_lp_landings",
+      "label": "LANDINGS",
+      "level": "medio",
+      "indent": 3,
+      "color": "#7A41ED",
+      "is_leaf": true,
+      "parent": "corp_lp",
+      "bq_key": "OTH|LP|LANDINGS"
+    },
+    {
+      "_doc": "L&P sub-canal: PARTNERSHIPS — solo ACQUISITION, INV=0.",
+      "id": "corp_lp_partnerships",
+      "label": "PARTNERSHIPS",
+      "level": "medio",
+      "indent": 3,
+      "color": "#7A41ED",
+      "is_leaf": true,
+      "parent": "corp_lp",
+      "bq_key": "OTH|LP|PARTNERSHIPS"
+    },
+    {
+      "_doc": "L&P sub-canal: OTHERS — ACQ+ACT. Catch-all de L&P no clasificado. Incluye CHANNEL_APERTURA_3='OTHERS'.",
+      "id": "corp_lp_others",
+      "label": "OTHERS",
+      "level": "medio",
+      "indent": 3,
+      "color": "#7A41ED",
+      "is_leaf": true,
+      "parent": "corp_lp",
+      "bq_key": "OTH|LP|OTHERS"
+    },
+    {
+      "_doc": "L&P sub-canal: GTM — sin datos en BQ a abr-2026, preparado para futura aparición.",
+      "id": "corp_lp_gtm",
+      "label": "GTM",
+      "level": "medio",
+      "indent": 3,
+      "color": "#7A41ED",
+      "is_leaf": true,
+      "parent": "corp_lp",
+      "bq_key": "OTH|LP|GTM"
+    },
+    {
+      "_doc": "L&P sub-canal: AFFILIATES — ACQUISITION, volumen muy bajo (~6 NR en 2025).",
+      "id": "corp_lp_affiliates",
+      "label": "AFFILIATES",
+      "level": "medio",
+      "indent": 3,
+      "color": "#7A41ED",
+      "is_leaf": true,
+      "parent": "corp_lp",
+      "bq_key": "OTH|LP|AFFILIATES"
+    },
+    {
+      "_doc": "UCR PRD: AP1=OTHERS, AP2=UCRANIA PRD. Tiene TOUCHPOINT de RE-* (Real Estates de producto) pero no se desglosa por medio en esta tabla.",
+      "id": "corp_ucr_prd",
+      "label": "UCR PRD",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#1AB059",
+      "is_leaf": true,
+      "parent": "corp_others",
+      "bq_key": "OTH|UCR_PRD|TOTAL"
+    },
+    {
+      "_doc": "SEO: AP1=OTHERS, AP2=SEO. Solo ACQUISITION. INV=$2.3M (pagado). Antes iba al catch-all ORG.",
+      "id": "corp_seo",
+      "label": "SEO",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#8B6914",
+      "is_leaf": true,
+      "parent": "corp_others",
+      "bq_key": "OTH|SEO|TOTAL"
+    },
+    {
+      "_doc": "POM SELLERS: AP1=OTHERS, AP2=POM SELLERS. Solo ACQUISITION. No es AP1=POM.",
+      "id": "corp_pom_sellers",
+      "label": "POM SELLERS",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#6BB8AA",
+      "is_leaf": true,
+      "parent": "corp_others",
+      "bq_key": "OTH|POM_SELLERS|TOTAL"
+    },
+    {
+      "_doc": "POM OTHERS: AP1=OTHERS, AP2=POM OTHERS. ACQ+ACT. No es AP1=POM.",
+      "id": "corp_pom_others",
+      "label": "POM OTHERS",
+      "level": "sub2",
+      "indent": 2,
+      "color": "#9FD4C8",
+      "is_leaf": true,
+      "parent": "corp_others",
+      "bq_key": "OTH|POM_OTHERS|TOTAL"
+    },
+    {
+      "_doc": "Medios de UCRANIA E&G — nivel 3 (leaf). EMAIL absorbe SMS (31 NR total). REAL ESTATES agrupa todos los TOUCHPOINT LIKE 'RE - %'.",
+      "id": "corp_ucr_eg_email",
+      "label": "EMAIL",
+      "level": "medio",
+      "indent": 3,
+      "color": "#5899D1",
+      "is_leaf": true,
+      "parent": "corp_ucr_eg",
+      "bq_key": "OC|UCR_EG|EMAIL"
+    },
+    {
+      "id": "corp_ucr_eg_pandora",
+      "label": "PANDORA",
+      "level": "medio",
+      "indent": 3,
+      "color": "#5899D1",
+      "is_leaf": true,
+      "parent": "corp_ucr_eg",
+      "bq_key": "OC|UCR_EG|PANDORA"
+    },
+    {
+      "id": "corp_ucr_eg_push",
+      "label": "PUSH",
+      "level": "medio",
+      "indent": 3,
+      "color": "#5899D1",
+      "is_leaf": true,
+      "parent": "corp_ucr_eg",
+      "bq_key": "OC|UCR_EG|PUSH"
+    },
+    {
+      "id": "corp_ucr_eg_real_estates",
+      "label": "REAL ESTATES",
+      "level": "medio",
+      "indent": 3,
+      "color": "#5899D1",
+      "is_leaf": true,
+      "parent": "corp_ucr_eg",
+      "bq_key": "OC|UCR_EG|REAL_ESTATES"
+    },
+    {
+      "id": "corp_ucr_eg_wpp",
+      "label": "WPP",
+      "level": "medio",
+      "indent": 3,
+      "color": "#5899D1",
+      "is_leaf": true,
+      "parent": "corp_ucr_eg",
+      "bq_key": "OC|UCR_EG|WPP"
+    },
+    {
+      "_doc": "Medios de OWN CHANNELS RECURRING — nivel 3 (leaf).",
+      "id": "corp_oc_rec_email",
+      "label": "EMAIL",
+      "level": "medio",
+      "indent": 3,
+      "color": "#4A80C4",
+      "is_leaf": true,
+      "parent": "corp_oc_recurring",
+      "bq_key": "OC|OC_REC|EMAIL"
+    },
+    {
+      "id": "corp_oc_rec_journey",
+      "label": "JOURNEY",
+      "level": "medio",
+      "indent": 3,
+      "color": "#4A80C4",
+      "is_leaf": true,
+      "parent": "corp_oc_recurring",
+      "bq_key": "OC|OC_REC|JOURNEY"
+    },
+    {
+      "id": "corp_oc_rec_pandora",
+      "label": "PANDORA",
+      "level": "medio",
+      "indent": 3,
+      "color": "#4A80C4",
+      "is_leaf": true,
+      "parent": "corp_oc_recurring",
+      "bq_key": "OC|OC_REC|PANDORA"
+    },
+    {
+      "id": "corp_oc_rec_push",
+      "label": "PUSH",
+      "level": "medio",
+      "indent": 3,
+      "color": "#4A80C4",
+      "is_leaf": true,
+      "parent": "corp_oc_recurring",
+      "bq_key": "OC|OC_REC|PUSH"
+    },
+    {
+      "id": "corp_oc_rec_wpp",
+      "label": "WPP",
+      "level": "medio",
+      "indent": 3,
+      "color": "#4A80C4",
+      "is_leaf": true,
+      "parent": "corp_oc_recurring",
+      "bq_key": "OC|OC_REC|WPP"
+    }
+  ],
+  "hierarchy_cost_corp": {
+    "_doc": "Mapeo corp_node_id → labels existentes en hierarchy_nr y hierarchy_cost para reutilizar datos de process_all() en Performance_vista_Corp. CERO queries BQ nuevas. Todos los dicts (monthly_inv_total, perf_nr_paid, perf_vpu_prod, perf_roa_num, plan_inv, plan_valor) ya están indexados por los labels de hierarchy_nr / hierarchy_cost y se acceden mediante nr_perf_label y cost_inv_label respectivamente.",
+    "_reglas_datos": [
+      "nr_perf_label  → clave en perf_nr_paid, perf_nr_go, perf_vpu_prod, perf_roa_num (hierarchy_nr labels)",
+      "cost_inv_label → clave en monthly_inv_total (hierarchy_cost labels)",
+      "plan_inv_label → clave en plan_inv (plan_row_inv en hierarchy_nr)",
+      "plan_valor_label → clave en plan_valor (plan_row_valor en hierarchy_nr)",
+      "plan_nr para corp → plan_nr_corp_by_node[corp_node_id] (de load_plan_corp(), indexado por corp_node_id directamente)",
+      "OC ACT en COSTOS_CANALES incluye Recurring + ADHOC combinados — no hay separación a nivel de inversión",
+      "L&P, UCR PRD, ORG, SEO, POM SELLERS, POM OTHERS → sin inversión en COSTOS_CANALES (cost_inv_label=null)"
+    ],
+    "mappings": [
+      {
+        "corp_node_id": "corp_total",
+        "nr_perf_label": "Total N+R",
+        "cost_inv_label": "Total Inversión",
+        "plan_inv_label": "Total N+R",
+        "plan_valor_label": "Total N+R",
+        "has_cost": true,
+        "has_vpu": true,
+        "has_roa": true
+      },
+      {
+        "corp_node_id": "corp_oc_ucr",
+        "nr_perf_label": "OC + UCR",
+        "cost_inv_label": "OC + UCR",
+        "plan_inv_label": "OC + UCR",
+        "plan_valor_label": "OC + UCR",
+        "has_cost": true,
+        "has_vpu": true,
+        "has_roa": true
+      },
+      {
+        "_note": "UCRANIA E&G = UCR Gest en hierarchy_nr/cost. Estrategia UCRANIA en COSTOS_CANALES.",
+        "corp_node_id": "corp_ucr_eg",
+        "nr_perf_label": "UCR Gest",
+        "cost_inv_label": "UCR Gest",
+        "plan_inv_label": null,
+        "plan_valor_label": "UCR Gest",
+        "has_cost": true,
+        "has_vpu": true,
+        "has_roa": true
+      },
+      {
+        "_note": "OWN CHANNELS RECURRING ≈ OC ACT en hierarchy_cost. COSTOS_CANALES no separa Recurring de ADHOC — ambos en ACTIVATION. Se usa OC ACT como mejor aproximación.",
+        "corp_node_id": "corp_oc_recurring",
+        "nr_perf_label": "OC ACT",
+        "cost_inv_label": "OC ACT",
+        "plan_inv_label": "OC ACT",
+        "plan_valor_label": "OC ACT",
+        "has_cost": true,
+        "has_vpu": true,
+        "has_roa": true
+      },
+      {
+        "_note": "OWN CHANNELS ADHOC: ACTIVATION_OTHER_TEAM en COSTOS_CANALES tiene INV=0 — no hay inversión separada. VPU/Valor tampoco existe como clave independiente en hierarchy_nr.",
+        "corp_node_id": "corp_oc_adhoc",
+        "nr_perf_label": null,
+        "cost_inv_label": null,
+        "plan_inv_label": null,
+        "plan_valor_label": null,
+        "has_cost": false,
+        "has_vpu": false,
+        "has_roa": false
+      },
+      {
+        "corp_node_id": "corp_pom",
+        "nr_perf_label": "POM TOTAL",
+        "cost_inv_label": "POM TOTAL",
+        "plan_inv_label": "POM TOTAL",
+        "plan_valor_label": "POM TOTAL",
+        "has_cost": true,
+        "has_vpu": true,
+        "has_roa": true
+      },
+      {
+        "_note": "ACQUISITION POM ≈ POM ADQ en hierarchy_nr/cost.",
+        "corp_node_id": "corp_acq_pom",
+        "nr_perf_label": "POM ADQ",
+        "cost_inv_label": "POM ADQ",
+        "plan_inv_label": null,
+        "plan_valor_label": "POM ADQ",
+        "has_cost": true,
+        "has_vpu": true,
+        "has_roa": true
+      },
+      {
+        "_note": "ACTIVATION POM ≈ POM ACT en hierarchy_nr/cost. Incluye STRATEGY=ACQUISITION+ACTIVATION.",
+        "corp_node_id": "corp_act_pom",
+        "nr_perf_label": "POM ACT",
+        "cost_inv_label": "POM ACT",
+        "plan_inv_label": null,
+        "plan_valor_label": "POM ACT",
+        "has_cost": true,
+        "has_vpu": true,
+        "has_roa": true
+      },
+      {
+        "_note": "WEB POM — ahora tiene nodo propio en hierarchy_cost (pom_web_c). Sin N+R separado en hierarchy_nr.",
+        "corp_node_id": "corp_web_pom",
+        "nr_perf_label": null,
+        "cost_inv_label": "WEB POM",
+        "plan_inv_label": null,
+        "plan_valor_label": null,
+        "has_cost": true,
+        "has_vpu": false,
+        "has_roa": false
+      },
+      {
+        "_note": "CTW POM — ahora tiene nodo propio en hierarchy_cost (pom_ctw_c). Sin N+R separado en hierarchy_nr.",
+        "corp_node_id": "corp_ctw_pom",
+        "nr_perf_label": null,
+        "cost_inv_label": "CTW POM",
+        "plan_inv_label": null,
+        "plan_valor_label": null,
+        "has_cost": true,
+        "has_vpu": false,
+        "has_roa": false
+      },
+      {
+        "_note": "OTHERS grupo heterogéneo sin mapping limpio en hierarchy_nr/cost. Sub-canales se muestran individualmente.",
+        "corp_node_id": "corp_others",
+        "nr_perf_label": null,
+        "cost_inv_label": null,
+        "plan_inv_label": null,
+        "plan_valor_label": null,
+        "has_cost": false,
+        "has_vpu": false,
+        "has_roa": false
+      },
+      {
+        "_note": "MGM = MGM TOTAL en hierarchy_nr/cost. CHANNEL=MGM, STRATEGY=ADQUISITION en COSTOS_CANALES.",
+        "corp_node_id": "corp_mgm",
+        "nr_perf_label": "MGM TOTAL",
+        "cost_inv_label": "MGM TOTAL",
+        "plan_inv_label": "MGM TOTAL",
+        "plan_valor_label": "MGM TOTAL",
+        "has_cost": true,
+        "has_vpu": true,
+        "has_roa": true
+      },
+      {
+        "_note": "L&P: no_cost=true en hierarchy_cost — sin inversión. VPU disponible desde DAILY_HISTORICO.",
+        "corp_node_id": "corp_lp",
+        "nr_perf_label": "L&P TOTAL",
+        "cost_inv_label": null,
+        "plan_inv_label": null,
+        "plan_valor_label": "L&P TOTAL",
+        "has_cost": false,
+        "has_vpu": true,
+        "has_roa": false
+      },
+      {
+        "_note": "UCR PRD: OWN CHANNELS PRD en DAILY_HISTORICO, no_cost en hierarchy_cost. VPU disponible.",
+        "corp_node_id": "corp_ucr_prd",
+        "nr_perf_label": "UCR PRD",
+        "cost_inv_label": null,
+        "plan_inv_label": null,
+        "plan_valor_label": "UCR PRD",
+        "has_cost": false,
+        "has_vpu": true,
+        "has_roa": false
+      },
+      {
+        "_note": "SEO, POM SELLERS, POM OTHERS: AP1=OTHERS en DAILY_HISTORICO, sin tracking en hierarchy_nr ni cost.",
+        "corp_node_id": "corp_seo",
+        "nr_perf_label": null,
+        "cost_inv_label": null,
+        "plan_inv_label": null,
+        "plan_valor_label": null,
+        "has_cost": false,
+        "has_vpu": false,
+        "has_roa": false
+      },
+      {
+        "corp_node_id": "corp_pom_sellers",
+        "nr_perf_label": null,
+        "cost_inv_label": null,
+        "plan_inv_label": null,
+        "plan_valor_label": null,
+        "has_cost": false,
+        "has_vpu": false,
+        "has_roa": false
+      },
+      {
+        "corp_node_id": "corp_pom_others",
+        "nr_perf_label": null,
+        "cost_inv_label": null,
+        "plan_inv_label": null,
+        "plan_valor_label": null,
+        "has_cost": false,
+        "has_vpu": false,
+        "has_roa": false
+      },
+      {
+        "_note": "NO ATRIBUIDO = ORG en hierarchy_nr. AP1=ORGANICO (ORGANIC+OTHER). VPU disponible desde perf_vpu_prod['ORG'].",
+        "corp_node_id": "corp_noatrib",
+        "nr_perf_label": "ORG",
+        "cost_inv_label": null,
+        "plan_inv_label": null,
+        "plan_valor_label": "ORG",
+        "has_cost": false,
+        "has_vpu": true,
+        "has_roa": false
+      }
+    ]
+  },
+  "hierarchy_PLAN": {
+    "_doc": "Mapeo completo entre filas del Excel 'Resumen Plan Acq 2026.xlsx' (bloque N+R, índice pandas iloc 0-based) y nodos del dashboard. Fuente de verdad para la asignación de Plan en hierarchy_nr_corp_detail. Ver History.md §25 para la lógica detallada.",
+    "_reglas_criticas": [
+      "POM ADQ y POM ACT NO tienen plan individual — solo POM TOTAL (row 5)",
+      "UCR Gest, UCR PRD y OC ACT NO tienen plan individual — sus planes están en las 3 plan_lines de OC+UCR",
+      "Ucrania (Gest+PRD) NO tiene plan individual",
+      "OC+UCR total plan = OC Recurring + OC Adhoc + Others+Producto (rows 6+10+17)",
+      "UCR PRD en BQ pertenece a OTHERS (AP1=OTHERS), pero su plan está contabilizado en OC+UCR (row 17)",
+      "OTHERS como grupo NO tiene plan total directo — solo MGM y L&P tienen plan individual"
+    ],
+    "mapeo_directo": [
+      {
+        "excel_row_iloc": 4,
+        "excel_label": "N+R",
+        "plan_nr_dict_key": "Total N+R",
+        "corp_node_id": "corp_total",
+        "corp_node_label": "Total N+R",
+        "hierarchy_nr_id": "total_nr",
+        "notas": "Plan total de todos los canales. Suma de todas las filas de plan."
+      },
+      {
+        "excel_row_iloc": 5,
+        "excel_label": "POM gest",
+        "plan_nr_dict_key": "POM TOTAL",
+        "corp_node_id": "corp_pom",
+        "corp_node_label": "POM",
+        "hierarchy_nr_id": "pom_total",
+        "notas": "Plan POM total. POM ADQ y POM ACT no tienen plan individual, solo este total."
+      },
+      {
+        "excel_row_iloc": 13,
+        "excel_label": "MGM",
+        "plan_nr_dict_key": "MGM TOTAL",
+        "corp_node_id": "corp_mgm",
+        "corp_node_label": "MGM",
+        "hierarchy_nr_id": "mgm_total",
+        "notas": "Plan MGM total. Sub-canal de OTHERS en la jerarquía corp."
+      },
+      {
+        "excel_row_iloc": 16,
+        "excel_label": "L&P",
+        "plan_nr_dict_key": "L&P TOTAL",
+        "corp_node_id": "corp_lp",
+        "corp_node_label": "L&P",
+        "hierarchy_nr_id": "lp_total",
+        "notas": "Plan L&P total. Sub-canal de OTHERS. No hay plan por sub-sub-canal (BRANDFORMANCE, LANDINGS, etc.)."
+      },
+      {
+        "excel_row_iloc": 18,
+        "excel_label": "No Atribuido / Organico",
+        "plan_nr_dict_key": "ORG",
+        "corp_node_id": "corp_noatrib",
+        "corp_node_label": "NO ATRIBUIDO",
+        "hierarchy_nr_id": "org",
+        "notas": "Plan orgánico / no atribuido. En BQ = AP1=ORGANICO (catch-all ELSE)."
+      }
+    ],
+    "mapeo_oc_ucr": {
+      "_doc": "OC+UCR NO tiene una sola fila Excel. Su plan se calcula como suma de 3 plan_lines en load_plan(). El corp_plan_nr_key='OC + UCR' apunta al dict calculado por load_plan().",
+      "corp_node_id": "corp_oc_ucr",
+      "corp_node_label": "OC + UCR",
+      "plan_nr_dict_key": "OC + UCR",
+      "hierarchy_nr_id": "oc_ucr",
+      "plan_lines": [
+        {
+          "excel_row_iloc": 6,
+          "excel_label": "OC Recurring",
+          "plan_line_label": "Plan Recurring",
+          "dashboard_equivalencia": "UCR Gest + OC ACT Recurring",
+          "notas": "Usuarios recurrentes de Own Channels gestionados"
+        },
+        {
+          "excel_row_iloc": 10,
+          "excel_label": "OC Adhoc",
+          "plan_line_label": "Plan Ad-Hoc",
+          "dashboard_equivalencia": "UCR Gest + OC ACT Ad-Hoc",
+          "notas": "Acciones ad-hoc de Own Channels"
+        },
+        {
+          "excel_row_iloc": 17,
+          "excel_label": "Others + Producto",
+          "plan_line_label": "Plan Producto",
+          "dashboard_equivalencia": "UCR PRD (Producto)",
+          "notas": "Producto / UCR PRD. En BQ, UCR PRD tiene AP1=OTHERS pero su plan está en OC+UCR. no_chart=true: excluido de la gráfica NR Mensual pero suma al total del plan."
+        }
+      ]
+    },
+    "sin_plan_individual": [
+      {
+        "corp_node_id": "corp_others",
+        "razon": "No hay fila Excel para OTHERS total. Derivado implícito: Total - OC+UCR - POM - ORG - MGM - L&P."
+      },
+      {
+        "corp_node_id": "corp_ucr_eg",
+        "razon": "UCR Gest no tiene plan individual. Su plan está dentro de OC+UCR (plan_lines)."
+      },
+      {
+        "corp_node_id": "corp_oc_recurring",
+        "razon": "Sub-canal BQ. No tiene plan individual (está dentro de OC+UCR plan_lines)."
+      },
+      {
+        "corp_node_id": "corp_oc_adhoc",
+        "razon": "Sub-canal BQ. No tiene plan individual."
+      },
+      {
+        "corp_node_id": "corp_acq_pom",
+        "razon": "Solo POM TOTAL tiene plan. POM ADQ no tiene plan individual."
+      },
+      {
+        "corp_node_id": "corp_act_pom",
+        "razon": "Solo POM TOTAL tiene plan. POM ACT no tiene plan individual."
+      },
+      {
+        "corp_node_id": "corp_web_pom",
+        "razon": "Sub-canal BQ sin plan individual."
+      },
+      {
+        "corp_node_id": "corp_ctw_pom",
+        "razon": "Sub-canal BQ sin plan individual."
+      },
+      {
+        "corp_node_id": "corp_ucr_prd",
+        "razon": "UCR PRD está en OTHERS en BQ pero su plan está en OC+UCR (row 17). No se asigna plan_nr_key individual para evitar doble conteo."
+      },
+      {
+        "corp_node_id": "corp_seo",
+        "razon": "Sin fila de plan en Excel."
+      },
+      {
+        "corp_node_id": "corp_pom_sellers",
+        "razon": "Sin fila de plan en Excel."
+      },
+      {
+        "corp_node_id": "corp_pom_others",
+        "razon": "Sin fila de plan en Excel."
+      }
+    ]
+  },
+  "hierarchy_PLAN_Corp": {
+    "_doc": "Mapeo Plan EXCLUSIVO para la tabla 'Detalle por Canal — Estructura Corporativa'. NO afecta hierarchy_nr ni la pestaña NR Mensual. Consumido por load_plan_corp() en gen_dashboard_v2.py que construye plan_nr_corp_by_node {corp_node_id: {yyyymm: plan_int}}. plan_type: 'direct_row'=una fila; 'sum_rows'=suma de múltiples filas.",
+    "_reglas_corp": [
+      "OC + UCR = OWN CHANNELS RECURRING (row 6) + OWN CHANNELS AD-HOC (row 10) — SIN Others+Producto",
+      "POM Total = POM gest (row 5) + POM no gestionado (row 9)",
+      "UCR PRD = Others + Producto (row 17) — en BQ está en OTHERS pero plan está en esta fila",
+      "MGM = MGM Total (row 13)",
+      "L&P = L&P Total (row 16)",
+      "No Atribuido = No Atribuido / Organico (row 18)",
+      "OTHERS (corp_others) no tiene plan total directo — solo MGM y L&P tienen plan individual"
+    ],
+    "mappings": [
+      {
+        "corp_node_id": "corp_total",
+        "plan_type": "direct_row",
+        "excel_rows": [
+          4
+        ],
+        "excel_label": "N+R",
+        "excel_row_desc": "Fila total de N+R plan 2026",
+        "notes": "Plan total de todos los canales. Referencia para calcular Share de plan."
+      },
+      {
+        "corp_node_id": "corp_oc_ucr",
+        "plan_type": "sum_rows",
+        "excel_rows": [
+          6,
+          10
+        ],
+        "excel_label": "OC Recurring + OC Adhoc",
+        "excel_row_desc": "row 6 = OWN CHANNELS RECURRING, row 10 = OWN CHANNELS AD-HOC",
+        "notes": "OC+UCR plan = solo canales gestionados OC. Others+Producto (row 17) va a corp_ucr_prd."
+      },
+      {
+        "corp_node_id": "corp_pom",
+        "plan_type": "sum_rows",
+        "excel_rows": [
+          5,
+          9
+        ],
+        "excel_label": "POM gest + POM no gestionado",
+        "excel_row_desc": "row 5 = POM gest, row 9 = POM no gestionado",
+        "notes": "POM Total plan = toda la base POM (gestionado + no gestionado). POM ADQ y POM ACT no tienen plan individual."
+      },
+      {
+        "corp_node_id": "corp_oc_recurring",
+        "plan_type": "direct_row",
+        "excel_rows": [
+          6
+        ],
+        "excel_label": "OC Recurring",
+        "excel_row_desc": "row 6 = OWN CHANNELS RECURRING total",
+        "notes": "Plan sub-canal OWN CHANNELS RECURRING. Los medios (EMAIL, JOURNEY, PANDORA, PUSH, WPP) no tienen plan individual en el Excel."
+      },
+      {
+        "corp_node_id": "corp_oc_adhoc",
+        "plan_type": "direct_row",
+        "excel_rows": [
+          10
+        ],
+        "excel_label": "OC Adhoc",
+        "excel_row_desc": "row 10 = OWN CHANNELS AD-HOC total",
+        "notes": "Plan sub-canal OWN CHANNELS AD-HOC."
+      },
+      {
+        "corp_node_id": "corp_mgm",
+        "plan_type": "direct_row",
+        "excel_rows": [
+          13
+        ],
+        "excel_label": "MGM",
+        "excel_row_desc": "row 13 = MGM Total",
+        "notes": "Plan MGM. Sub-canal de OTHERS en la jerarquía corp."
+      },
+      {
+        "corp_node_id": "corp_lp",
+        "plan_type": "direct_row",
+        "excel_rows": [
+          16
+        ],
+        "excel_label": "L&P",
+        "excel_row_desc": "row 16 = L&P Total",
+        "notes": "Plan L&P. No hay plan por sub-sub-canal (BRANDFORMANCE, LANDINGS, etc.)."
+      },
+      {
+        "corp_node_id": "corp_ucr_prd",
+        "plan_type": "direct_row",
+        "excel_rows": [
+          17
+        ],
+        "excel_label": "Others + Producto",
+        "excel_row_desc": "row 17 = Others + Producto = UCR PRD",
+        "notes": "UCR PRD plan. En BQ pertenece a AP1=OTHERS pero su plan está contabilizado en esta fila del Excel, separado de OC+UCR."
+      },
+      {
+        "corp_node_id": "corp_noatrib",
+        "plan_type": "direct_row",
+        "excel_rows": [
+          18
+        ],
+        "excel_label": "No Atribuido / Organico",
+        "excel_row_desc": "row 18 = No Atribuido / Organico",
+        "notes": "Plan orgánico/no atribuido. En BQ = AP1=ORGANICO (catch-all ELSE de la query corp)."
+      }
+    ]
+  },
+  "hierarchy_resumenPlan": [
+    {
+      "id": "pom_total",
+      "label": "POM Total",
+      "excel_logic": "POM gest"
+    },
+    {
+      "id": "pom_no_gestionado",
+      "label": "POM no gestionado",
+      "excel_logic": "POM no gestionado"
+    },
+    {
+      "id": "oc_recurring",
+      "label": "OC Recurring",
+      "dashboard_mapping": [
+        "UCR Gest",
+        "OC ACT Recurring"
+      ],
+      "excel_logic": "OC Recurring"
+    },
+    {
+      "id": "oc_adhoc",
+      "label": "OC Adhoc",
+      "dashboard_mapping": [
+        "UCR Gest",
+        "OC ACT Ad-Hoc"
+      ],
+      "excel_logic": "OC Adhoc"
+    },
+    {
+      "id": "ucr_prd",
+      "label": "UCR PRD",
+      "dashboard_mapping": [
+        "UCR PRD"
+      ],
+      "excel_logic": "Others + Producto"
+    },
+    {
+      "id": "oc_ucr",
+      "label": "OC + UCR",
+      "dashboard_mapping": [
+        "OC + UCR"
+      ],
+      "excel_logic": "OC Recurring + OC Adhoc + Others + Producto"
+    },
+    {
+      "id": "org",
+      "label": "Organico",
+      "dashboard_mapping": [
+        "ORG"
+      ],
+      "excel_logic": "No Atribuido / Organico"
+    },
+    {
+      "id": "mgm_total",
+      "label": "MGM Total",
+      "dashboard_mapping": [
+        "MGM TOTAL"
+      ],
+      "excel_logic": "MGM"
+    },
+    {
+      "id": "lp_total",
+      "label": "L&P Total",
+      "dashboard_mapping": [
+        "L&P TOTAL"
+      ],
+      "excel_logic": "L&P"
+    }
+  ]
+}
