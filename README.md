@@ -15,21 +15,13 @@ Genera un HTML de ~120 MB con 10 pestañas de performance de adquisición por ca
 - [Google Cloud CLI (`gcloud`)](https://cloud.google.com/sdk/docs/install) instalado
 - Git instalado
 - Acceso de lectura a BigQuery en `meli-bi-data` (datasets: `SBOX_EG_MKT`, `SBOX_MARKETING`, `SBOX_MKTCORPMP`, `WHOWNER`)
-- Acceso de **Editor** al proyecto Apps Script `MLM ADQ N+R Dashboard v1` (pedírselo a Sergio)
 
 ---
 
 ## Paso 0 — Pedir accesos (antes de empezar)
 
-Necesitas que el dueño del proyecto haga **2 cosas**:
 
-**a) Acceso al proyecto Apps Script**
-
-El dueño abre [script.google.com/home](https://script.google.com/home), abre el proyecto `MLM ADQ N+R Dashboard v1`, clic en el ícono de personas → `Compartir` → agrega tu email con rol **Editor**.
-
-Sin esto, el deploy falla con error 403.
-
-**b) Verificar tu acceso a BigQuery**
+** Verificar tu acceso a BigQuery**
 
 Confirmar con el equipo de datos que tu cuenta `@mercadolibre.com.mx` tiene permisos de lectura en los datasets listados arriba.
 
@@ -39,7 +31,6 @@ Confirmar con el equipo de datos que tu cuenta `@mercadolibre.com.mx` tiene perm
 
 ```powershell
 git clone https://github.com/sergibarra-MP/SI_Meli_code1.git
-cd SI_Meli_code1\MLM_ADQ_Dash
 ```
 
 > **Importante:** todo se corre desde la carpeta `MLM_ADQ_Dash/`. Si corres los scripts desde `src/` fallará.
