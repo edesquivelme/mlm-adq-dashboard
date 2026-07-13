@@ -47,6 +47,12 @@ COMMS_OC_CACHE_PATH  = os.path.join(PROJECT_ROOT, 'data', 'comms_oc_cache.json')
 # Eliminar manualmente para forzar re-query: del data\comms_oc_current_month.json
 COMMS_OC_CURRENT_MONTH_PATH = os.path.join(PROJECT_ROOT, 'data', 'comms_oc_current_month.json')
 
+def _cs(v):
+    """Coerce to str NaN-safe. float NaN es truthy en Python, 'v or default' no funciona."""
+    if v is None or (isinstance(v, float) and v != v):
+        return ''
+    return str(v).strip()
+
 BQ_PROJECT = 'meli-bi-data'
 N_PRIOR    = 2
 
@@ -451,20 +457,20 @@ def summarize_comms_by_month(comms_oc_records_list):
         month   = str(record.get('MONTH_ID', ''))
         comm_id = str(record.get('COMMUNICATION_ID', ''))
         campaign = (
-            record.get('CAMPAIGN_NAME_CLEAN')
-            or record.get('CAMPAIGN_NAME')
+            _cs(record.get('CAMPAIGN_NAME_CLEAN'))
+            or _cs(record.get('CAMPAIGN_NAME'))
             or 'Sin nombre'
         )
         if not month or not comm_id:
             continue
 
         # Dimensiones de segmentación
-        canal_dim = (record.get('CANAL') or 'SIN_CANAL').upper().strip()
+        canal_dim = (_cs(record.get('CANAL')) or 'SIN_CANAL').upper()
         # BUSINESS_LINE = nuevo nombre (renombrado de CHANNELS_METRICS en queries.py).
         # Fallback a CHANNELS_METRICS para compatibilidad con registros del cache antiguo.
-        bl_dim    = (record.get('BUSINESS_LINE') or
-                     record.get('CHANNELS_METRICS') or
-                     record.get('BUSINESS_LINE_SEGMENT_CHANNELS') or 'SIN_BL').strip()
+        bl_dim    = (_cs(record.get('BUSINESS_LINE')) or
+                     _cs(record.get('CHANNELS_METRICS')) or
+                     _cs(record.get('BUSINESS_LINE_SEGMENT_CHANNELS')) or 'SIN_BL')
         date_str  = str(record.get('FIRST_SENT_DATE') or '')
         dow_dim   = _dow(date_str)
         week_dim  = _week_of_month(date_str)
@@ -492,7 +498,7 @@ def summarize_comms_by_month(comms_oc_records_list):
 
         lift_raw   = _safe_float(record.get('M_LIFT'))
         ui_raw     = _safe_float(record.get('USER_INC'))
-        strategy_v = (record.get('STRATEGIES') or '').split(' | ')[0].strip() or 'SIN_STRATEGY'
+        strategy_v = (_cs(record.get('STRATEGIES')) or '').split(' | ')[0].strip() or 'SIN_STRATEGY'
         combo_key  = f"{strategy_v}|{canal_dim}"   # ej. 'UCRANIA|PUSH', 'ACQUISITION|EMAIL'
 
         if campaign not in monthly_campaigns[month]:
@@ -518,13 +524,13 @@ def summarize_comms_by_month(comms_oc_records_list):
                     'canal':      record.get('CANAL') or '—',
                     'app':        record.get('APP') or '—',
                     'strategy':   strategy_v,
-                    'substrat':   (record.get('SUBSTRATEGIES') or '').split(' | ')[0].strip() or '—',
-                    'biz_line':   (record.get('BUSINESS_LINE') or record.get('CHANNELS_METRICS') or '—')[:50],
+                    'substrat':   (_cs(record.get('SUBSTRATEGIES')) or '').split(' | ')[0].strip() or '—',
+                    'biz_line':   (_cs(record.get('BUSINESS_LINE')) or _cs(record.get('CHANNELS_METRICS')) or '—')[:50],
                     'type_name':  record.get('TYPE_NAME') or '—',
                     'notif_type': record.get('NOTIFICATION_TYPE') or '—',
                     'team':       record.get('TEAM') or '—',
-                    'title':      (record.get('NOTIFICATION_TITLE') or '')[:100],
-                    'text':       (record.get('NOTIFICATION_TEXT')  or '')[:150],
+                    'title':      _cs(record.get('NOTIFICATION_TITLE'))[:100],
+                    'text':       _cs(record.get('NOTIFICATION_TEXT'))[:150],
                     'user_inc':   ui_raw,
                     'lift_pct':   round(lift_raw * 100, 3),
                     'or_pct':     round(or_val_raw * 100, 1) if or_val_raw and or_val_raw < 1 else round(or_val_raw, 1) if or_val_raw else 0.0,

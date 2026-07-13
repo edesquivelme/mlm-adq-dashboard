@@ -31,6 +31,12 @@
 # Abr colapso (+63 USER_INC) = lag Pandora 0.2 + saturación PUSH + JOURNEY canibalizadores
 # ==============================================================================
 
+def _cs(v):
+    """Coerce to str NaN-safe. float NaN es truthy en Python, 'v or default' no funciona."""
+    if v is None or (isinstance(v, float) and v != v):
+        return ''
+    return str(v).strip()
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # DATOS ESTRATÉGICOS OC+UCR
@@ -1406,9 +1412,9 @@ def _html_card(content_html: str, bg: str = "#fff",
 
 def _classify_fm_subcanal_analysis(strategy: str, team: str, campaign_name: str = '') -> str:
     """Sub-canal FM — tabla §83 + regla UCR por nombre de campaña."""
-    s   = (strategy or '').upper().strip()
-    t   = (team     or '').upper().strip()
-    ucr = 'UCR' in (campaign_name or '').upper()
+    s   = (_cs(strategy) or '').upper()
+    t   = (_cs(team)     or '').upper()
+    ucr = 'UCR' in (_cs(campaign_name) or '').upper()
     # P0: SELLERS team con |USER_INC| > 250 — incluida pero marcada aparte
     if 'SELLERS' in t:
         return 'OTHERS_SELLERS'
@@ -1429,12 +1435,12 @@ def _classify_corp_subcanal_analysis(strategy: str, notif_type: str, team: str,
                                       substrategy: str = '', clasif_campaigns: str = '',
                                       campaign_name: str = '') -> str:
     """Sub-canal Corp — tabla §83 + regla UCR por nombre de campaña."""
-    s   = (strategy        or '').upper().strip()
-    nt  = (notif_type      or '').upper().strip()
-    t   = (team            or '').upper().strip()
-    ss  = (substrategy     or '').upper().strip()
-    cl  = (clasif_campaigns or '').upper().strip()
-    ucr = 'UCR' in (campaign_name or '').upper()
+    s   = (_cs(strategy)         or '').upper()
+    nt  = (_cs(notif_type)       or '').upper()
+    t   = (_cs(team)             or '').upper()
+    ss  = (_cs(substrategy)      or '').upper()
+    cl  = (_cs(clasif_campaigns) or '').upper()
+    ucr = 'UCR' in (_cs(campaign_name) or '').upper()
     # P0: SELLERS team con |USER_INC| > 250 — incluida pero marcada aparte
     if 'SELLERS' in t:
         return 'OTHERS_SELLERS'
@@ -1520,14 +1526,14 @@ def _compute_comms_analysis(comms_records: list, months_sorted: list):
                 continue
             if max_day and _day_of(r) > max_day:
                 continue
-            cn = r.get('CAMPAIGN_NAME_CLEAN') or r.get('CAMPAIGN_NAME') or ''
+            cn = _cs(r.get('CAMPAIGN_NAME_CLEAN')) or _cs(r.get('CAMPAIGN_NAME')) or ''
             if use_fm:
                 sc = _classify_fm_subcanal_analysis(r.get('STRATEGY', ''), r.get('TEAM', ''), cn)
             else:
                 sc = _classify_corp_subcanal_analysis(
                     r.get('STRATEGY', ''), r.get('NOTIFICATION_TYPE', ''), r.get('TEAM', ''),
                     r.get('SUBSTRATEGY', ''), r.get('CLASIF_CAMPAIGNS', ''), cn)
-            cn  = r.get('CAMPAIGN_NAME_CLEAN') or r.get('CAMPAIGN_NAME') or 'UNKNOWN'
+            cn  = _cs(r.get('CAMPAIGN_NAME_CLEAN')) or _cs(r.get('CAMPAIGN_NAME')) or 'UNKNOWN'
             entry = result[sc][cn]
             entry['user_inc'] += float(r.get('USER_INC') or 0)
             entry['sents']    += float(r.get('SENTS') or 0)

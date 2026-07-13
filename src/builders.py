@@ -20,6 +20,13 @@ import plotly.graph_objects as go
 from processors import fmt_month
 
 
+def _cs(v):
+    """Coerce to str NaN-safe. float NaN es truthy en Python, 'v or default' no funciona."""
+    if v is None or (isinstance(v, float) and v != v):
+        return ''
+    return str(v).strip()
+
+
 # ── Formateadores compartidos por todas las tablas ────────────
 
 def fmt_val(v):
@@ -1812,12 +1819,12 @@ def build_comms_oc_table_html(data):
                                  substrategy: str = '', clasif_campaigns: str = '',
                                  campaign_name: str = '') -> str:
         """Sub-canal vista Corp — tabla oficial + regla UCR por nombre de campaña."""
-        s   = (strategy        or '').upper().strip()
-        nt  = (notif_type      or '').upper().strip()
-        t   = (team            or '').upper().strip()
-        ss  = (substrategy     or '').upper().strip()
-        cl  = (clasif_campaigns or '').upper().strip()
-        ucr = 'UCR' in (campaign_name or '').upper()
+        s   = (_cs(strategy)         or '').upper()
+        nt  = (_cs(notif_type)       or '').upper()
+        t   = (_cs(team)             or '').upper()
+        ss  = (_cs(substrategy)      or '').upper()
+        cl  = (_cs(clasif_campaigns) or '').upper()
+        ucr = 'UCR' in (_cs(campaign_name) or '').upper()
         # P0: SELLERS team con |USER_INC| > 250 — incluida pero marcada aparte
         if 'SELLERS' in t:
             return 'OTHERS_SELLERS'
@@ -1855,13 +1862,13 @@ def build_comms_oc_table_html(data):
           + CAMPAIGN LIKE 'flows_communication%' + FLAG_PAID=FREE + EXPERIMENT contains EYG → JOURNEY
         Para todas las demás: mismo valor que CANAL.
         """
-        c   = (canal        or '').upper().strip()
-        ch  = (channel      or '').upper().strip()
-        s   = (strategy     or '').upper().strip()
-        ss  = (substrategy  or '').upper().strip()
-        cn  = (campaign_name or '').lower().strip()
-        fp  = (flag_paid    or '').upper().strip()
-        exp = (experiment   or '').upper().strip()
+        c   = (_cs(canal)         or '').upper()
+        ch  = (_cs(channel)       or '').upper()
+        s   = (_cs(strategy)      or '').upper()
+        ss  = (_cs(substrategy)   or '').upper()
+        cn  = (_cs(campaign_name) or '').lower()
+        fp  = (_cs(flag_paid)     or '').upper()
+        exp = (_cs(experiment)    or '').upper()
         # Regla JOURNEY: PUSH APP MP + no UCRANIA + flows_communication + FREE + EYG experiment
         if (c == 'PUSH' and 'PUSH APP MP' in ch
                 and s != 'UCRANIA' and ss != 'UCRANIA'
@@ -1874,9 +1881,9 @@ def build_comms_oc_table_html(data):
 
     def _classify_fm_subcanal(strategy: str, team: str, campaign_name: str = '') -> str:
         """Sub-canal vista FM — tabla oficial + regla UCR por nombre de campaña."""
-        s   = (strategy or '').upper().strip()
-        t   = (team     or '').upper().strip()
-        ucr = 'UCR' in (campaign_name or '').upper()
+        s   = (_cs(strategy)      or '').upper()
+        t   = (_cs(team)          or '').upper()
+        ucr = 'UCR' in (_cs(campaign_name) or '').upper()
         # P0: SELLERS team con |USER_INC| > 250 — incluida pero marcada aparte
         if 'SELLERS' in t:
             return 'OTHERS_SELLERS'
@@ -1907,9 +1914,9 @@ def build_comms_oc_table_html(data):
     ]
     def _classify_enfoque(campaign_name: str) -> str:
         """Clasifica la campaña por ENFOQUE buscando -CODE- o -CODE al final."""
-        if not campaign_name:
+        name = (_cs(campaign_name) or '').upper()
+        if not name:
             return '—'
-        name = campaign_name.upper()
         for code, label in _ENFOQUE_RULES:
             if f'-{code}-' in name or name.endswith(f'-{code}'):
                 return label
@@ -1967,19 +1974,19 @@ def build_comms_oc_table_html(data):
         month_label     = fmt_month(month_id_yyyymm) if len(month_id_yyyymm) == 6 else month_id_yyyymm
         sent_date       = str(record.get('SENT_DATE', ''))[:10]
 
-        fuente_val     = record.get('FUENTE_TABLA') or '—'
-        canal_val      = record.get('CANAL') or '—'
-        channel_val    = record.get('CHANNEL') or '—'
-        strategy_val   = record.get('STRATEGY') or '—'
-        substrat_val   = record.get('SUBSTRATEGY') or '—'
-        clasif_val     = record.get('CLASIF_CAMPAIGNS') or '—'
-        notif_type_val = record.get('NOTIFICATION_TYPE') or '—'
-        team_val       = record.get('TEAM') or '—'
-        biz_line_val   = record.get('BUSINESS_LINE') or '—'
-        biz_seg_val    = record.get('BUSINESS_LINE_SEGMENT') or '—'
-        campaign_val   = record.get('CAMPAIGN_NAME_CLEAN') or record.get('CAMPAIGN_NAME') or '—'
+        fuente_val     = _cs(record.get('FUENTE_TABLA'))     or '—'
+        canal_val      = _cs(record.get('CANAL'))           or '—'
+        channel_val    = _cs(record.get('CHANNEL'))         or '—'
+        strategy_val   = _cs(record.get('STRATEGY'))        or '—'
+        substrat_val   = _cs(record.get('SUBSTRATEGY'))     or '—'
+        clasif_val     = _cs(record.get('CLASIF_CAMPAIGNS')) or '—'
+        notif_type_val = _cs(record.get('NOTIFICATION_TYPE')) or '—'
+        team_val       = _cs(record.get('TEAM'))            or '—'
+        biz_line_val   = _cs(record.get('BUSINESS_LINE'))   or '—'
+        biz_seg_val    = _cs(record.get('BUSINESS_LINE_SEGMENT')) or '—'
+        campaign_val   = _cs(record.get('CAMPAIGN_NAME_CLEAN')) or _cs(record.get('CAMPAIGN_NAME')) or '—'
         enfoque_val       = _classify_enfoque(campaign_val)
-        experiment_val    = record.get('EXPERIMENT') or '—'
+        experiment_val    = _cs(record.get('EXPERIMENT'))   or '—'
         corp_subcanal_aux_val = _classify_corp_subcanal(strategy_val, notif_type_val, team_val,
                                                        substrat_val, clasif_val, campaign_val)
         corp_subcanal_val     = 'OWN CHANNELS RECURRING' if corp_subcanal_aux_val == 'OTHERS_SELLERS' else corp_subcanal_aux_val
@@ -1987,8 +1994,8 @@ def build_comms_oc_table_html(data):
         fm_subcanal_val       = 'OC ACT' if fm_subcanal_aux_val == 'OTHERS_SELLERS' else fm_subcanal_aux_val
         medio_final_val   = _classify_medio_final(canal_val, channel_val, strategy_val,
                                                    substrat_val, campaign_val,
-                                                   record.get('FLAG_PAID', ''),
-                                                   record.get('EXPERIMENT', ''))
+                                                   _cs(record.get('FLAG_PAID')),
+                                                   _cs(record.get('EXPERIMENT')))
 
         ev_test    = record.get('TOTAL_TEST')
         ev_control = record.get('TOTAL_CONTROL')
@@ -2005,7 +2012,7 @@ def build_comms_oc_table_html(data):
         _all_funnel_zero = (_to_int(ev_test) == 0 and _to_int(ev_control) == 0
                             and _to_int(ev_arrived) == 0 and _to_int(ev_open) == 0
                             and _to_int(ev_click) == 0)
-        _is_adhoc_ind = 'INDIVIDUAL' in (team_val or '').upper()
+        _is_adhoc_ind = 'INDIVIDUAL' in (_cs(team_val) or '').upper()
         if _all_funnel_zero and _is_adhoc_ind and campaign_val in _campaigns_with_real_data:
             continue
 
@@ -2026,7 +2033,7 @@ def build_comms_oc_table_html(data):
         ratio_val       = safe_float_or_none(record.get('RATIO_CANIBALIZACION'))
         entry_test_val  = safe_float_or_none(record.get('ENTRY_TEST_JNY'))
         entry_ctrl_val  = safe_float_or_none(record.get('ENTRY_CONTROL_JNY'))
-        _is_journey     = 'JOURNEY' in (canal_val or '').upper()
+        _is_journey     = 'JOURNEY' in (_cs(canal_val) or '').upper()
         flag_paid_val = record.get('FLAG_PAID') or '—'
         consumido_val = safe_float_or_none(record.get('CONSUMIDO_USD'))
         envio_val     = safe_float_or_none(record.get('COSTO_ENVIO_USD'))
