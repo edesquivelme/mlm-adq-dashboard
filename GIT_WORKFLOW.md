@@ -13,36 +13,35 @@ Guía operativa del flujo Git para actualización y sincronización del dashboar
 
 ---
 
-## Ciclo diario — Actualizar dashboard
+## Ciclo diario — Un solo comando hace todo
 
-**Paso 1 — Generar y deployar** (PowerShell, desde la raíz del proyecto):
+**Desde la raíz del proyecto (PowerShell):**
 ```powershell
 .\actualizar_dashboard.ps1
 ```
-Hace dos cosas: genera `dashboard_v1.html` consultando BigQuery y lo sube a Apps Script. Tarda ~10-15 min.
 
-**Paso 2 — Validar que la actualización fue exitosa:**
+El script ejecuta 3 pasos automáticamente:
+1. **Genera** `dashboard_v1.html` consultando BigQuery (~10-15 min)
+2. **Deploya** a Apps Script (misma URL permanente)
+3. **Sincroniza** a GitHub: `git add` → `git commit` con fecha del día → `git push origin main`
+
+**Validar que la actualización fue exitosa:**
 - Abrir el dashboard y verificar que D-1, D-2 y D-3 muestran datos distintos entre sí
 - Si los totales no cambian entre días → algo falló en BQ
 - Si el HTML pesa < 50KB → el deploy fue bloqueado automáticamente (guardia de seguridad)
+- Si el paso 3 muestra "AVISO: nada nuevo que commitear" → es normal si no hubo cambios reales
 
 ---
 
-## Ciclo git — Sincronizar cambios al repositorio
+## Sincronización manual a GitHub (solo si es necesario)
 
-Correr en la terminal después de cada actualización del dashboard:
+Si se modificó algún archivo fuera del script de actualización:
 
 ```bash
 git add .
-git commit -m "Actualización dashboard YYYY-MM-DD"
+git commit -m "Descripción del cambio"
 git push origin main
 ```
-
-- `git add .` → prepara todos los archivos modificados
-- `git commit -m "..."` → registra el cambio con un mensaje descriptivo
-- `git push origin main` → sube al GitHub de Edgar
-
-**Señal de que hay cambios sin subir**: el ícono de fork en VS Code muestra un número — significa que la versión local y GitHub no están sincronizadas.
 
 ---
 
