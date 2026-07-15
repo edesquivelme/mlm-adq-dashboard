@@ -1,5 +1,5 @@
 # actualizar_dashboard.ps1
-# Flujo completo: genera dashboard_v1.html y lo sube a Apps Script de Edgar.
+# Flujo completo: genera dashboard_v1.html, lo sube a Apps Script y sincroniza a GitHub.
 # Uso: .\actualizar_dashboard.ps1 (desde la raiz del proyecto)
 
 $ROOT = $PSScriptRoot
@@ -40,6 +40,23 @@ if ($LASTEXITCODE -ne 0) {
 }
 $dur2 = [math]::Round(((Get-Date) - $t2).TotalSeconds)
 Write-Host "  OK — deployado en $dur2s" -ForegroundColor Green
+
+# Paso 3 — Sincronizar a GitHub
+Write-Host ""
+Write-Host "[3/3] Sincronizando a GitHub..." -ForegroundColor Yellow
+$fecha = Get-Date -Format "yyyy-MM-dd"
+git -C $ROOT add .
+git -C $ROOT commit -m "Actualizacion dashboard $fecha"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  AVISO: nada nuevo que commitear o error en commit" -ForegroundColor Yellow
+} else {
+    git -C $ROOT push origin main
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  ERROR en git push — verifica autenticacion GitHub" -ForegroundColor Red
+    } else {
+        Write-Host "  OK — GitHub sincronizado" -ForegroundColor Green
+    }
+}
 
 $total = [math]::Round(((Get-Date) - $t1).TotalSeconds)
 Write-Host ""
