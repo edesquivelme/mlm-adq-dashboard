@@ -14,7 +14,7 @@ if (-not (Test-Path $VENV)) {
 
 Write-Host ""
 Write-Host "======================================" -ForegroundColor Cyan
-Write-Host "  MLM ADQ N+R Dashboard — Actualizar  " -ForegroundColor Cyan
+Write-Host "  MLM ADQ N+R Dashboard - Actualizar  " -ForegroundColor Cyan
 Write-Host "======================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -61,7 +61,7 @@ if ($LASTEXITCODE -ne 0) {
 $total = [math]::Round(((Get-Date) - $t1).TotalSeconds)
 Write-Host ""
 Write-Host "======================================" -ForegroundColor Green
-Write-Host "  LISTO — Total: $total segundos" -ForegroundColor Green
+Write-Host "  LISTO - Total: $total segundos" -ForegroundColor Green
 Write-Host "  $URL" -ForegroundColor Green
 Write-Host "======================================" -ForegroundColor Green
 Write-Host ""
