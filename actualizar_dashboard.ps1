@@ -27,7 +27,7 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 $dur1 = [math]::Round(((Get-Date) - $t1).TotalSeconds)
-Write-Host "  OK — generado en $dur1s" -ForegroundColor Green
+Write-Host "  OK - generado en $dur1s" -ForegroundColor Green
 
 # Paso 2 — Deploy
 Write-Host ""
@@ -39,7 +39,7 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 $dur2 = [math]::Round(((Get-Date) - $t2).TotalSeconds)
-Write-Host "  OK — deployado en $dur2s" -ForegroundColor Green
+Write-Host "  OK - deployado en $dur2s" -ForegroundColor Green
 
 # Paso 3 — Sincronizar a GitHub
 Write-Host ""
