@@ -18,6 +18,22 @@ Todas las funciones son puras: reciben la jerarquía y devuelven un string SQL.
 """
 
 
+# ── Tope de disponibilidad para el residual INAPP (§90) ───────────────────────
+# ORG / NO ATRIBUIDO se calcula por resta: INAPP_TOTAL − OC − PAID − UCR.
+# INAPP (BT_MP_USER_ENGAGEMENT_INAPP) carga ~2 días antes que los canales
+# gestionados (Torre Daily, Individuals Perf, Campaigns). En el día más nuevo,
+# INAPP aporta el total del sitio pero los canales aportan 0 → todo ese día se
+# vuelca a ORG (dump artificial de +50-80K). El tope limita el residual al último
+# día donde AMBOS backbones gestionados ya cargaron. Se mueve solo cuando cargan.
+_INAPP_MANAGED_CAP = (
+    "LEAST("
+    "(SELECT MAX(DAY_ID) FROM `meli-bi-data.SBOX_EG_MKT.BT_OC_NR_REPORTE_TORRE_DAILY` "
+    "WHERE SITE = 'MLM' AND DAY_ID >= DATE '2025-01-01'), "
+    "(SELECT MAX(TIM_DAY) FROM `meli-bi-data.SBOX_MARKETING.BT_MP_INDIVIDUALS_PERFORMANCE` "
+    "WHERE SIT_SITE_ID = 'MLM' AND TIM_DAY >= DATE '2025-01-01'))"
+)
+
+
 def get_nr_sql(HIERARCHY_NR):
     """SQL N+R diario acumulado desde PANEL_MONTHLY_DAILY_HISTORICO.
     El CASE WHEN se genera automáticamente desde hierarchy_nr → bq_mapping.
@@ -302,7 +318,7 @@ def get_nr_tc_sql(HIERARCHY_NR):
       FROM `meli-bi-data.SBOX_MARKETING.BT_MP_USER_ENGAGEMENT_INAPP`
       WHERE SIT_SITE_ID = 'MLM'
         AND EVENT_DATE  >= DATE '2025-01-01'
-        AND EVENT_DATE   <= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        AND EVENT_DATE   <= LEAST(DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY), {_INAPP_MANAGED_CAP})
         AND (DAYS_SINCE_FIRST_EVENT = 0 OR DAYS_SINCE_PRIOR_EVENT > 89)
       GROUP BY EVENT_DATE
     ),
@@ -1435,7 +1451,7 @@ def get_nr_corp_tc_sql(HIERARCHY_NR=None):
       FROM `meli-bi-data.SBOX_MARKETING.BT_MP_USER_ENGAGEMENT_INAPP`
       WHERE SIT_SITE_ID = 'MLM'
         AND EVENT_DATE  >= DATE '2025-01-01'
-        AND EVENT_DATE   <= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        AND EVENT_DATE   <= LEAST(DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY), {_INAPP_MANAGED_CAP})
         AND (DAYS_SINCE_FIRST_EVENT = 0 OR DAYS_SINCE_PRIOR_EVENT > 89)
       GROUP BY fecha_mes_corp
     ),
@@ -1660,7 +1676,7 @@ def get_nr_corp_daily_tc_sql(HIERARCHY_NR=None):
       FROM `meli-bi-data.SBOX_MARKETING.BT_MP_USER_ENGAGEMENT_INAPP`
       WHERE SIT_SITE_ID = 'MLM'
         AND EVENT_DATE  >= DATE '2025-01-01'
-        AND EVENT_DATE   <= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        AND EVENT_DATE   <= LEAST(DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY), {_INAPP_MANAGED_CAP})
         AND (DAYS_SINCE_FIRST_EVENT = 0 OR DAYS_SINCE_PRIOR_EVENT > 89)
       GROUP BY fecha_mes_corp, dia_del_mes
     ),
