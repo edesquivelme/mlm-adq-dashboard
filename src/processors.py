@@ -367,7 +367,9 @@ def process_all(config, client, n_prior=2):
             lbl = c['label']
             child_lbls = [next(x['label'] for x in HIERARCHY_NR if x['id'] == cid) for cid in c.get('children', [])]
             child_maxdays = [nr_data_maxday[cl].get(m, 0) for cl in child_lbls if nr_data_maxday[cl].get(m, 0) > 0]
-            nr_data_maxday[lbl][m] = min(child_maxdays) if child_maxdays else 0
+            # max: los agregados comparan el mayor día disponible (fair para el total).
+            # Solo los leaves usan su día real exacto para la comparación UCR Gest.
+            nr_data_maxday[lbl][m] = max(child_maxdays) if child_maxdays else 0
 
     # MoM y promedios históricos
     for lbl in LABELS:
