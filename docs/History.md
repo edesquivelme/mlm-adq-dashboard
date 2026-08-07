@@ -6894,10 +6894,15 @@ Aquel +88K vino de leaves con `maxday` **mal calculado** (ORG=6 arrastrado + lag
 ### Deploy
 Dashboard regenerado (9,658 KB) y deployado — **Apps Script versión 27**. Tag rollback: **`v-pre-org-maxday-fix`** (estado pre-§91, commit `6d9c1b0`).
 
+### 91.1 Aviso de lag CORTE-AWARE (follow-up)
+
+El aviso 🕒 "Datos gestionados hasta DD/MM" de la pestaña MTD (§90.6) se mostraba siempre que hubiera desfase, sin importar el corte D-1/D-2/D-3. En D-3 (día 4) confundía porque el día ya estaba completo en todas las tablas y el texto hablaba de "D-1 y D-2". Ahora es **corte-aware**: solo aparece cuando el `refDay` del corte elegido va **por delante** del último día cargado por los canales gestionados (`refDay > managed_max_day`). Con `managed_max` = día 5: sale en **D-1** (día 6 > 5), se oculta en **D-2** (día 5) y **D-3** (día 4). Texto reescrito para hablar del corte actual, no de "D-1 y D-2". Solo `src/template_dashboard.html`, bloque de la nota en `renderMTDTable`.
+
 ### Archivos modificados en §91
 
 | Archivo | Cambio |
 |---|---|
 | `src/processors.py` | `_nr_last_real_day` (último día con fila real) → `nr_data_maxday` leaf. Propagación agregados `max`→`min`. |
+| `src/template_dashboard.html` | §91.1: aviso de lag corte-aware (`refDay > managed_max_day`) + texto reescrito. |
 | `docs/History.md` | §91 (este documento) |
 | `CLAUDE.md` | §91 en historial |
