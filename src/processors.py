@@ -336,6 +336,14 @@ def process_all(config, client, n_prior=2):
                 else:
                     daily_cum[lbl][m][str(d)] = int(d_df['CUM_NR'].sum())
 
+    # Capturar último día real con datos por canal (antes del forward-fill).
+    # Usado por JS para capear LMTD al mismo número de días que MTD cuando hay lag de tabla.
+    nr_data_maxday = {l: {} for l in LABELS}
+    for lbl in [c['label'] for c in HIERARCHY_NR if c.get('is_leaf')]:
+        for m in months:
+            non_zero = [int(d) for d, v in daily_cum[lbl][m].items() if v > 0]
+            nr_data_maxday[lbl][m] = max(non_zero) if non_zero else 0
+
     # Forward-fill acumulados (Bug 1 fix: días sin datos heredan el valor anterior)
     for lbl in [c['label'] for c in HIERARCHY_NR if c.get('is_leaf')]:
         for m in months:
@@ -352,6 +360,14 @@ def process_all(config, client, n_prior=2):
             child_lbls = [next(x['label'] for x in HIERARCHY_NR if x['id'] == cid) for cid in c.get('children', [])]
             for d_str in daily_cum[lbl][m]:
                 daily_cum[lbl][m][d_str] = sum(daily_cum[cl][m].get(d_str, 0) for cl in child_lbls)
+
+    # Propagar nr_data_maxday a nodos agregados (min de hijos = día más restrictivo)
+    for m in months:
+        for c in reversed([x for x in HIERARCHY_NR if not x.get('is_leaf')]):
+            lbl = c['label']
+            child_lbls = [next(x['label'] for x in HIERARCHY_NR if x['id'] == cid) for cid in c.get('children', [])]
+            child_maxdays = [nr_data_maxday[cl].get(m, 0) for cl in child_lbls if nr_data_maxday[cl].get(m, 0) > 0]
+            nr_data_maxday[lbl][m] = min(child_maxdays) if child_maxdays else 0
 
     # MoM y promedios históricos
     for lbl in LABELS:
@@ -535,6 +551,7 @@ def process_all(config, client, n_prior=2):
         monthly_nr=monthly_nr, monthly_mom=monthly_mom, monthly_cost=monthly_cost,
         daily_cum=daily_cum, daily_cost=daily_cost,
         avg_cum=avg_cum, vs_prom_cum=vs_prom_cum,
+        nr_data_maxday=nr_data_maxday,
         # Costos (fuente COSTOS_CANALES)
         monthly_inv_canal=monthly_inv_canal, monthly_inv_incentivo=monthly_inv_incentivo,
         monthly_inv_total=monthly_inv_total, monthly_inv_mantika=monthly_inv_mantika,

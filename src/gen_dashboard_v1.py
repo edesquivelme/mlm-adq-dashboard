@@ -1023,6 +1023,7 @@ def assemble():
         'daily_cost':    data['daily_cost'],
         'avg_cum':       data['avg_cum'],
         'vs_prom_cum':   data['vs_prom_cum'],
+        'nr_data_maxday': data['nr_data_maxday'],
         # Datos corporativos diarios — consumidos por renderNRCorpDailySection() + renderMTDCorpSection()
         'daily_nr_corp_by_node':   daily_nr_corp_by_node,   # {node_id: {yyyymm: {dia_str: nr_int}}}
         # Plan N+R corp — consumido por renderMTDCorpSection() y build_nr_corp_table_html()

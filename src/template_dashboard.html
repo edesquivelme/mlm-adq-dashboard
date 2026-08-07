@@ -428,7 +428,11 @@ function renderMTDTable(month) {
     const dark = cls !== 'leaf';
     const rs   = CLS_STYLE[cls] || CLS_STYLE.leaf;
     const pad  = 'padding-left:' + (D.indents[li]*14+10) + 'px';
-    const lmtd        = (((D.daily_cum[label] || {})[prevMonth]) || {})[lmtdRefDay] || 0;
+    // Día real de datos del canal (antes de forward-fill). Fija lag de tabla campaigns_ucr.
+    // Si el canal tiene menos días que refDay, capeamos lmtdRefDay al mismo número de días.
+    const _chanMaxDay     = (((D.nr_data_maxday || {})[label] || {})[month] || refDay);
+    const _chanLmtdRefDay = (_isCurrentPeriod && _chanMaxDay < lmtdRefDay) ? _chanMaxDay : lmtdRefDay;
+    const lmtd        = (((D.daily_cum[label] || {})[prevMonth]) || {})[String(_chanLmtdRefDay)] || 0;
     // §82: para el mes en curso usar monthly_nr (raw NR sum, D-1 inmediato) en lugar de
     // daily_cum[refDay] (CUM_NR, que tarda ~2 días en finalizarse en BQ).
     // D-1: monthly_nr (suma total D-1, más fresco). D-2: daily_cum[refDay] (certificado).
@@ -443,7 +447,9 @@ function renderMTDTable(month) {
     const planVal     = (D.plan_nr[label] || {})[month] || null;
     const vsPlan      = planVal != null ? mtd - planVal : null;
     const vsPlanPct   = planVal != null && planVal > 0 ? (mtd - planVal) / planVal : null;
-    const proj            = refDay > 0 ? Math.round(mtd * totalDaysInMonth / refDay) : null;
+    // Proyección: usar días reales del canal (no días de calendario) cuando hay lag de tabla.
+    const _projRefDay     = (_isCurrentPeriod && _chanMaxDay < refDay) ? _chanMaxDay : refDay;
+    const proj            = _projRefDay > 0 ? Math.round(mtd * totalDaysInMonth / _projRefDay) : null;
     const projVsPlan      = proj != null && planVal != null && planVal > 0 ? (proj - planVal) / planVal : null;
     // Cierre real del mes anterior (mes completo, no solo D7)
     const prevMonthFull   = (D.monthly_nr[label] || {})[prevMonth] || 0;
