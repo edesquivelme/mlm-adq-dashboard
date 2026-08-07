@@ -6800,3 +6800,57 @@ for lbl in ['POM ADQ', 'POM ACT']:
 | `src/processors.py` | Fix doble-0.38: reordenación de pasos en bloque `perf_roa_num`. `_oc_roa_labels` set para aplicar factor solo a OC. Eliminado loop `for lbl in perf_roa_num` al final. |
 | `CLAUDE.md` | §89 en historial. Actualización de la nota sobre `perf_roa_num` en §87. |
 | `docs/History.md` | §89 añadida (este documento) |
+
+---
+
+## §90 — 6/7-Ago-2026 — Alineación UCR Gest con E&G + fixes de lag de fuentes
+
+Sesión centrada en la metodología N+R de UCR Gest y en tres bugs de **lag de tablas** (fuentes que cargan a distinto ritmo) que se destaparon al alinear con E&G. Cuatro entregables: cambio de fuente UCR, fix de comparación LMTD, fix del dump de ORG, y una alarma preventiva.
+
+### 90.1 UCR Gest → `NR_ADJUST_FCST` (metodología E&G confirmada por Andrés Garza)
+
+**Qué cambió:** el dashboard medía UCR Gest con `NR_INC_USERS` de `BT_OC_NR_REPORTE_TORRE_DAILY` (lift-based). E&G usa una fuente y lógica distinta, confirmada por Andrés Garza el 2026-08-06:
+
+- **Mes en curso:** `SUM(NR_ADJUST_FCST)` — ventana 7D abierta, anticipa conversiones de envíos recientes.
+- **Meses cerrados:** `SUM(NEW_7D_ADJUST + REC_7D_ADJUST)` — ventana 7D confirmada.
+- **Fuente:** `BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR`, filtro `SITE='MLM' AND CLASIF_CAMPAIGNS='UCRANIA'` (≠ `CLASIFICACION` de Torre Daily).
+
+**Por qué:** Torre Daily subestima UCR en el mes en curso porque los envíos de los últimos 7 días no tienen conversiones asentadas. A D5 de Ago-26: Torre Daily=10,072 vs FCST=12,798 (+27%). Meses cerrados: idénticos.
+
+**Implementación (`source_tc = "campaigns_ucr"`):** nuevo bucket `leaves_ucr_campaigns` + CTE `ucr_campaigns_tc` en `get_nr_tc_sql()`. `_tc_channel_parts()` rutea `campaigns_ucr → leaves_oc_tc` para que VPU y costos sigan de Torre Daily (invariantes). Tooltip ℹ en tablas NR Mensual, Performance y MTD. Commit `087491d`, tag `v-pre-ucr-fcst`. Validado empíricamente: query exacta de Andrés (sin corte manual) = nuestro dashboard (con corte D-1) = **12,798**, idénticos.
+
+**Inconsistencia aceptada:** Vista Corp sigue Torre Daily para UCR. Solo impacta el mes en curso; en meses cerrados ambas vistas convergen. Documentado con tooltip.
+
+### 90.2 Fix comparación LMTD — `nr_data_maxday` (lag tabla campaigns)
+
+**Síntoma:** caída artificial de −20% en UCR Gest MTD. **Root cause:** `BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR` tiene ~1 día más de lag que Torre Daily. Cuando `refDay` avanzaba (p.ej. día 6) pero UCR Gest solo tenía 5 días reales, el LMTD tomaba Jul día 6 vs MTD de 5 días → comparación injusta.
+
+**Fix:** `processors.py` calcula `nr_data_maxday` (último día real con datos, ANTES del forward-fill) por canal, propagado a agregados con `max(hijos)`. En `template_dashboard.html` (`renderMTDTable`), cada fila usa `_chanLmtdRefDay = min(chanMaxDay, lmtdRefDay)` para su LMTD; la proyección usa días reales en denominador. Commits `96a6df6` (fix) + `be171fc` (corrección `min`→`max` en agregados, tras detectar +88K artificio en Total). Tag `v-pre-lmtd-maxday-fix`.
+
+### 90.3 Fix dump de ORG — tope `_INAPP_MANAGED_CAP` (lag INAPP vs canales)
+
+**Síntoma:** ORG/NO ATRIBUIDO saltó +57K de un día a otro y Total N+R se infló a 285K (vs ~200K real).
+
+**Root cause:** ORG se calcula por resta → `INAPP_TOTAL − OC − PAID − UCR`. La tabla INAPP (`BT_MP_USER_ENGAGEMENT_INAPP`) carga ~2 días antes que los canales gestionados (Torre Daily, Individuals Perf, Campaigns). En el día más nuevo, INAPP aporta el total del sitio pero los canales aportan 0 (aún sin cargar) → todo ese día se vuelca a ORG. **Bug latente:** solo aparece cuando INAPP va adelante; días normales todas las tablas caminan juntas (mismo D-1) y no pasa nada.
+
+Evidencia BQ (Ago-26, corrida viernes 7): INAPP hasta Aug 7, Torre Daily / Individuals hasta Aug 5. INAPP Aug 6 = 84,723 (2× lo normal → día a medio cargar). `ORG(Aug 6) = 84,723 − 0 − 0 − 0`.
+
+**Fix:** constante módulo `_INAPP_MANAGED_CAP = LEAST(MAX Torre Daily, MAX Individuals Perf)` en `queries.py`. Aplicada como `EVENT_DATE <= LEAST(D-1, _INAPP_MANAGED_CAP)` en los **3 CTEs INAPP**: `inapp_total_tc` (FM), `inapp_total_corp` (Corp mensual), `inapp_total_daily` (Corp diario). El residual solo llega al último día donde ambos backbones gestionados cargaron; se auto-ajusta cuando cargan. Validado: ORG Ago 196K→139K, Total 285K→200K, día 6 fantasma eliminado. Dry-run OK en 3 queries. Commit `079d9b9`, tag `v-pre-org-residual-cap`.
+
+**Efecto en MTD tab:** con el tope, si los canales van 2 días atrás, D-1 y D-2 aterrizan en el mismo día (el último real). NO es bug — no se puede mostrar un día sin datos. Se separan solos cuando los canales avancen.
+
+### 90.4 Alarma preventiva — `check_source_lag()`
+
+Función en `gen_dashboard_v1.py` que corre en "Paso 0" de cada generación. 1 query barata (MAX de fechas por fuente). Si INAPP va adelante de `LEAST(Torre Daily, Individuals)` imprime WARNING visible con el gap en días. No bloquea — el residual ya se auto-protege (§90.3). Da trazabilidad de por qué ORG/Total pueden quedar en un día más atrasado. Commit `00969c4`.
+
+### 90.5 Archivos modificados en §90
+
+| Archivo | Cambio |
+|---|---|
+| `config/channels_config.json` | `ucr_gest.tc_mapping.source_tc = "campaigns_ucr"` + `clasif_campaigns_tc = "UCRANIA"` |
+| `src/queries.py` | `get_nr_tc_sql()`: bucket `leaves_ucr_campaigns` + CTE `ucr_campaigns_tc`. Constante `_INAPP_MANAGED_CAP` + tope en 3 CTEs INAPP (`inapp_total_tc`, `inapp_total_corp`, `inapp_total_daily`). |
+| `src/processors.py` | `nr_data_maxday` (último día real por canal, pre-forward-fill) + propagación `max` a agregados + en `return dict`. |
+| `src/gen_dashboard_v1.py` | `check_source_lag()` (alarma) llamada en Paso 0. `nr_data_maxday` inyectado en `data_js`. |
+| `src/template_dashboard.html` | `renderMTDTable`: `_chanLmtdRefDay`/`_projRefDay` por canal para LMTD y proyección. Tooltip ℹ UCR Gest. |
+| `docs/History.md` | §90 añadida (este documento) |
+| `CLAUDE.md` | §90 en historial |
