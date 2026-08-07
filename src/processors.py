@@ -307,6 +307,13 @@ def process_all(config, client, n_prior=2):
     # Para estos hay que acumular NR día a día en lugar de leer CUM_NR=0
     _canales_cum_desde_nr = {'ORG'}
 
+    # §91: último día con FILA REAL por canal/mes (no el cumulativo > 0).
+    # Crítico para ORG: acumula desde NR, por lo que un día sin fila (INAPP capado)
+    # arrastra el cumulativo del día anterior → el test "cum > 0" lo cuenta como día
+    # con dato y descuadra la comparación LMTD del MTD. Aquí registramos el último día
+    # con al menos una fila en el DataFrame del canal (señal real de dato en la fuente).
+    _nr_last_real_day = {l: {} for l in LABELS}
+
     print(">>> Paso 2: Procesando N+R...")
     for m in months:
         df_m = df_nr[df_nr['FECHA_MES'] == m]
@@ -326,23 +333,28 @@ def process_all(config, client, n_prior=2):
 
             _acum_desde_nr = lbl in _canales_cum_desde_nr
             _cum = 0
+            _last_real = 0
             for d in sorted(df_m['DIA'].unique()):
                 d_df = slice_df[slice_df['DIA'] == d]
                 daily_cost[lbl][m][str(d)] = round(d_df['COST'].sum(), 2)
+                if len(d_df) > 0:                       # §91: fila real en la fuente
+                    _last_real = int(d)
                 if _acum_desde_nr:
                     # ORG cache: NR diario → acumular manualmente
                     _cum += int(d_df['NR'].sum())
                     daily_cum[lbl][m][str(d)] = _cum
                 else:
                     daily_cum[lbl][m][str(d)] = int(d_df['CUM_NR'].sum())
+            _nr_last_real_day[lbl][m] = _last_real
 
     # Capturar último día real con datos por canal (antes del forward-fill).
     # Usado por JS para capear LMTD al mismo número de días que MTD cuando hay lag de tabla.
     nr_data_maxday = {l: {} for l in LABELS}
     for lbl in [c['label'] for c in HIERARCHY_NR if c.get('is_leaf')]:
         for m in months:
-            non_zero = [int(d) for d, v in daily_cum[lbl][m].items() if v > 0]
-            nr_data_maxday[lbl][m] = max(non_zero) if non_zero else 0
+            # §91: usar el último día con fila real (no el cumulativo > 0, que ORG
+            # arrastra tras un día sin dato y por eso descuadraba el LMTD).
+            nr_data_maxday[lbl][m] = _nr_last_real_day[lbl].get(m, 0)
 
     # Forward-fill acumulados (Bug 1 fix: días sin datos heredan el valor anterior)
     for lbl in [c['label'] for c in HIERARCHY_NR if c.get('is_leaf')]:
@@ -361,15 +373,18 @@ def process_all(config, client, n_prior=2):
             for d_str in daily_cum[lbl][m]:
                 daily_cum[lbl][m][d_str] = sum(daily_cum[cl][m].get(d_str, 0) for cl in child_lbls)
 
-    # Propagar nr_data_maxday a nodos agregados (min de hijos = día más restrictivo)
+    # Propagar nr_data_maxday a nodos agregados (§91: min de hijos = día más restrictivo).
+    # Un agregado sólo está COMPLETO hasta el día en que TODOS sus hijos tienen dato.
+    # Más allá, el total es ragged (sólo algunos canales) → si el LMTD se capa al día
+    # máximo (max) se compara un total incompleto de este mes contra uno completo del
+    # anterior, generando una FALSA caída. min = comparación justa. Requiere que los
+    # leaves tengan su día real exacto (fix ORG arriba) para no arrastrar un laggard.
     for m in months:
         for c in reversed([x for x in HIERARCHY_NR if not x.get('is_leaf')]):
             lbl = c['label']
             child_lbls = [next(x['label'] for x in HIERARCHY_NR if x['id'] == cid) for cid in c.get('children', [])]
             child_maxdays = [nr_data_maxday[cl].get(m, 0) for cl in child_lbls if nr_data_maxday[cl].get(m, 0) > 0]
-            # max: los agregados comparan el mayor día disponible (fair para el total).
-            # Solo los leaves usan su día real exacto para la comparación UCR Gest.
-            nr_data_maxday[lbl][m] = max(child_maxdays) if child_maxdays else 0
+            nr_data_maxday[lbl][m] = min(child_maxdays) if child_maxdays else 0
 
     # MoM y promedios históricos
     for lbl in LABELS:

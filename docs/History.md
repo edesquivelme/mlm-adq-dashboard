@@ -6860,3 +6860,44 @@ Función en `gen_dashboard_v1.py` que corre en "Paso 0" de cada generación. 1 q
 | `src/template_dashboard.html` | `renderMTDTable`: `_chanLmtdRefDay`/`_projRefDay` por canal para LMTD y proyección. Tooltip ℹ UCR Gest. |
 | `docs/History.md` | §90 añadida (este documento) |
 | `CLAUDE.md` | §90 en historial |
+
+---
+
+## §91 — 7-Ago-2026 — Fix falsa caída ORG (−27K) y Total (−26K) en MTD por `maxday` mal calculado
+
+### Síntoma
+Tras §90, la pestaña MTD mostraba **ORG −27,426 (−16.5%)** y **Total N+R −26,710 (−11.2%)** un día después de deployar, sin que hubiera caída real. UCR Gest y los demás canales se veían bien.
+
+### Root cause — dos capas
+**(1) Leaf ORG.** ORG es el único canal en `_canales_cum_desde_nr` (acumula NR día a día en vez de leer `CUM_NR` de BQ). Cuando el día D no tiene fila real (INAPP capado a `managed_max` por §90.3), el bucle hace `_cum += 0` → el acumulado **arrastra** el valor del día anterior. El detector de `nr_data_maxday` usaba `cumulativo > 0`, y como el arrastre sigue siendo > 0, contaba ese día vacío como "día con dato". Efecto: `maxday[ORG][Ago]=6` cuando el último día real es 5 → el MTD comparaba ORG **Ago 1–5** (138,721) contra **Jul 1–6** (166,147) = −27,426 falso. Contra Jul día 5 (138,592): **+129, plano** (la realidad).
+
+**(2) Agregados.** La propagación a nodos padre usaba `max(hijos)` (introducida en §90 como parche a los leaves mal calculados). Con leaves corregidos, `max` es incorrecto: toma el día del hijo más fresco (OC ACT/POM llegan a día 6) mientras la masa del total (ORG 66%, capado a día 5) se queda en 5. `monthly_nr` (MTD) es *ragged* hacia el día máximo, pero el LMTD se capaba a Jul día 6 completo → falsa caída de −26,710 en Total.
+
+### Fix (`src/processors.py`)
+1. **Leaf** — nuevo dict `_nr_last_real_day[lbl][m]`: durante el bucle diario registra el último día con **fila real** (`len(d_df) > 0`), no el cumulativo > 0. `nr_data_maxday` de leaves ahora lee de ahí. Universal: para canales `CUM_NR` da el mismo resultado que antes; sólo cambia ORG.
+2. **Agregados** — propagación `max` → **`min(hijos)`**: un agregado sólo está completo hasta el día en que *todos* sus hijos tienen dato. Requiere leaves correctos (fix 1) para no arrastrarse por un laggard.
+
+### Validación (offline sobre datos ya generados, antes de tocar BQ)
+
+| Canal | Antes (falso) | Después §91 | Referencia limpia (d5 vs d5) |
+|---|---|---|---|
+| ORG | −27,426 (−16.5%) | **+129 (+0.1%)** | 138,718 vs 138,592 |
+| Total N+R | −26,710 (−11.2%) | **+14,176 (+7.2%)** | +3,835 (el extra viene del ragged de `monthly_nr`, lado seguro) |
+| UCR Gest | — | **−11 (−0.1%)** | = ref Andrés (12,797 vs 12,808) ✓ |
+| OC ACT | — | **+4,077 (+30.7%)** | crecimiento real |
+
+El `min` no se arrastra: el mínimo entre leaves con dato = 5 (UCR Gest / OC ACT, capados a `managed_max`), no un canal chico. Verificado en vivo tras regenerar.
+
+### Por qué `min` no reintroduce el bug +88K de §90
+Aquel +88K vino de leaves con `maxday` **mal calculado** (ORG=6 arrastrado + laggards). Con los leaves ya correctos, `min` = último día con dato completo en toda la jerarquía = el día justo para comparar. El riesgo de blow-up sólo existiría si un canal de masa chica lagueara mucho; hoy los laggards (OC/UCR) están atados a `managed_max` por el tope §90.3.
+
+### Deploy
+Dashboard regenerado (9,658 KB) y deployado — **Apps Script versión 27**. Tag rollback: **`v-pre-org-maxday-fix`** (estado pre-§91, commit `6d9c1b0`).
+
+### Archivos modificados en §91
+
+| Archivo | Cambio |
+|---|---|
+| `src/processors.py` | `_nr_last_real_day` (último día con fila real) → `nr_data_maxday` leaf. Propagación agregados `max`→`min`. |
+| `docs/History.md` | §91 (este documento) |
+| `CLAUDE.md` | §91 en historial |
