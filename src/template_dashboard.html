@@ -359,6 +359,24 @@ function renderMTDTable(month) {
     + '<span style="font-size:11px;font-weight:700;color:#C00000">Antes de 15HS MX &nbsp;|&nbsp; 18hs Arg</span>'
     + '<span style="margin-left:auto;font-size:13px;font-weight:700;color:#1a2744">D&#8209;' + _mtdCutoff + '</span>'
     + '</div>';
+
+  // §90 — Nota informativa de lag de fuentes (solo mes en curso, cuando aplica).
+  // Los canales gestionados (Torre Daily/Individuals/Campaigns) pueden cargar
+  // ~2 días después que INAPP. Cuando eso pasa, D-1 y D-2 coinciden en el mismo
+  // día real. Se avisa para no leerlo como error. Tono neutro (🕒), no de alarma.
+  var _lag = D.source_lag || null;
+  if (_isCurrentPeriod && _lag && _lag.gap_days > 0) {
+    var _mm = _lag.managed_max;   // 'YYYY-MM-DD'
+    var _mmDisp = _mm.slice(8,10) + '/' + _mm.slice(5,7) + '/' + _mm.slice(0,4);
+    html += '<div style="margin:2px 0 10px;padding:7px 11px;background:#eef4fb;'
+          + 'border-left:3px solid #5899D1;border-radius:3px;font-size:11px;color:#2d5986;line-height:1.5">'
+          + '🕒 <strong>Datos gestionados hasta ' + _mmDisp + '</strong> — las tablas de canales '
+          + '(OC, Paid, UCR) cargan ' + _lag.gap_days + ' día' + (_lag.gap_days > 1 ? 's' : '')
+          + ' después que el total del sitio. Por eso D&#8209;1 y D&#8209;2 pueden mostrar el mismo día: '
+          + 'es el último con datos completos, no un error. Se actualiza solo al cargar los canales.'
+          + '</div>';
+  }
+
   html += '<div class="table-scroll"><table class="mtd-tbl"><thead>';
   html += '<tr>'
     + '<th class="lbl-col" rowspan="2">'+currLbl+'</th>'

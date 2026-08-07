@@ -943,7 +943,7 @@ def assemble():
     # ── 2. BQ + procesamiento (queries.py + processors.py) ────
     client = bigquery.Client(project=BQ_PROJECT)
     print(">>> Paso 0: Verificando sincronía de fuentes (ALARMA §90)...")
-    check_source_lag(client)
+    source_lag = check_source_lag(client)
     data   = process_all(config, client, N_PRIOR)
 
     # ── 3. Plan Excel ─────────────────────────────────────────
@@ -1067,6 +1067,12 @@ def assemble():
         'avg_cum':       data['avg_cum'],
         'vs_prom_cum':   data['vs_prom_cum'],
         'nr_data_maxday': data['nr_data_maxday'],
+        # §90 — Lag de fuentes para nota informativa en MTD tab (fechas → ISO string).
+        'source_lag': {
+            'inapp_max':   source_lag['inapp_max'].isoformat(),
+            'managed_max': source_lag['managed_max'].isoformat(),
+            'gap_days':    (source_lag['inapp_max'] - source_lag['managed_max']).days,
+        },
         # Datos corporativos diarios — consumidos por renderNRCorpDailySection() + renderMTDCorpSection()
         'daily_nr_corp_by_node':   daily_nr_corp_by_node,   # {node_id: {yyyymm: {dia_str: nr_int}}}
         # Plan N+R corp — consumido por renderMTDCorpSection() y build_nr_corp_table_html()

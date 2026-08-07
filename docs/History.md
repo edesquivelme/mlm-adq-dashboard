@@ -6843,6 +6843,12 @@ Evidencia BQ (Ago-26, corrida viernes 7): INAPP hasta Aug 7, Torre Daily / Indiv
 
 Función en `gen_dashboard_v1.py` que corre en "Paso 0" de cada generación. 1 query barata (MAX de fechas por fuente). Si INAPP va adelante de `LEAST(Torre Daily, Individuals)` imprime WARNING visible con el gap en días. No bloquea — el residual ya se auto-protege (§90.3). Da trazabilidad de por qué ORG/Total pueden quedar en un día más atrasado. Commit `00969c4`.
 
+### 90.6 Indicador de lag en la UI (MTD tab)
+
+`check_source_lag()` ahora retorna el dict de fechas máximas; `main()` lo captura en `source_lag` y lo inyecta en `data_js['source_lag']` (`inapp_max`, `managed_max`, `gap_days` — fechas en ISO string). En `renderMTDTable` (`template_dashboard.html`), cuando el mes en curso está seleccionado y `gap_days > 0`, se muestra una nota informativa bajo el badge: *"🕒 Datos gestionados hasta DD/MM/YYYY — las tablas de canales cargan N días después que el total del sitio. Por eso D-1 y D-2 pueden mostrar el mismo día: es el último con datos completos, no un error."* Tono neutro (reloj 🕒, no ⚠️) para no confundirse con una alarma. Auto-extinción cuando `gap_days = 0`.
+
+**Fuente de verdad del histórico:** §90 completo vive en `docs/History.md` + fila en `CLAUDE.md` → ambos versionados en GitHub (commit `db45fdd` docs, + este follow-up UI). La memoria de Alfred (`~/.claude/.../memory/`) es local y complementaria, NO sustituye la documentación del repo.
+
 ### 90.5 Archivos modificados en §90
 
 | Archivo | Cambio |
