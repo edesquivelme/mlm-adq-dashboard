@@ -85,6 +85,47 @@ from builders        import build_reporting_tab_html
 from processors      import process_new_rec_monthly
 
 
+def check_source_lag(client):
+    """ALARMA §90 — Desfase de carga entre INAPP y canales gestionados.
+
+    ORG/NO ATRIBUIDO se calcula por resta: INAPP_TOTAL − OC − PAID − UCR.
+    INAPP suele cargar antes que Torre Daily / Individuals Perf. Cuando eso pasa,
+    el residual se capa solo (§90 _INAPP_MANAGED_CAP) para no volcar el día más
+    nuevo a ORG — pero ese día queda PENDIENTE hasta que carguen los canales.
+
+    Esta función corre 1 query barata (MAX de fechas) e imprime un WARNING visible
+    para trazabilidad. No bloquea: el auto-ajuste del residual ya protege los datos.
+    Retorna dict con las fechas máximas por fuente (para logs/memoria).
+    """
+    sql = """
+    SELECT
+      (SELECT MAX(EVENT_DATE) FROM `meli-bi-data.SBOX_MARKETING.BT_MP_USER_ENGAGEMENT_INAPP`
+         WHERE SIT_SITE_ID = 'MLM' AND EVENT_DATE >= DATE '2025-01-01')  AS inapp_max,
+      (SELECT MAX(DAY_ID) FROM `meli-bi-data.SBOX_EG_MKT.BT_OC_NR_REPORTE_TORRE_DAILY`
+         WHERE SITE = 'MLM' AND DAY_ID >= DATE '2025-01-01')             AS torre_max,
+      (SELECT MAX(TIM_DAY) FROM `meli-bi-data.SBOX_MARKETING.BT_MP_INDIVIDUALS_PERFORMANCE`
+         WHERE SIT_SITE_ID = 'MLM' AND TIM_DAY >= DATE '2025-01-01')     AS indiv_max
+    """
+    row = list(client.query(sql).result())[0]
+    managed_max = min(row.torre_max, row.indiv_max)
+    result = {'inapp_max': row.inapp_max, 'torre_max': row.torre_max,
+              'indiv_max': row.indiv_max, 'managed_max': managed_max}
+    if row.inapp_max > managed_max:
+        gap = (row.inapp_max - managed_max).days
+        print("  " + "=" * 62)
+        print(f"  ⚠️  [ALARMA §90] DESFASE DE CARGA: {gap} día(s)")
+        print(f"      INAPP cargó hasta ......... {row.inapp_max}")
+        print(f"      Torre Daily (OC) hasta .... {row.torre_max}")
+        print(f"      Individuals Perf hasta .... {row.indiv_max}")
+        print(f"      → Residual ORG capado a {managed_max} (auto-ajuste §90).")
+        print(f"      → Día(s) posterior(es) a {managed_max} quedan PENDIENTES")
+        print(f"        hasta que los canales gestionados carguen. Sin acción manual.")
+        print("  " + "=" * 62)
+    else:
+        print(f"  ✅ Fuentes alineadas: INAPP y canales gestionados hasta {managed_max}")
+    return result
+
+
 def load_plan(config, all_months):
     """Carga TODOS los datos de plan desde el Excel 'Resumen Plan Acq 2026.xlsx'.
 
@@ -901,6 +942,8 @@ def assemble():
 
     # ── 2. BQ + procesamiento (queries.py + processors.py) ────
     client = bigquery.Client(project=BQ_PROJECT)
+    print(">>> Paso 0: Verificando sincronía de fuentes (ALARMA §90)...")
+    check_source_lag(client)
     data   = process_all(config, client, N_PRIOR)
 
     # ── 3. Plan Excel ─────────────────────────────────────────
