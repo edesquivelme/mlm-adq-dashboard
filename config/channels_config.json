@@ -84,10 +84,9 @@
         "channel": "OWN CHANNELS MKT"
       },
       "tc_mapping": {
-        "source_tc": "torre_daily",
-        "clasificacion_tc": [
-          "UCRANIA"
-        ]
+        "source_tc": "campaigns_ucr",
+        "clasif_campaigns_tc": "UCRANIA",
+        "clasificacion_tc": ["UCRANIA"]
       }
     },
     {

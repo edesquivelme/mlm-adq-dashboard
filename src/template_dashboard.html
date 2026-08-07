@@ -449,8 +449,10 @@ function renderMTDTable(month) {
     const prevMonthFull   = (D.monthly_nr[label] || {})[prevMonth] || 0;
     const projVsPrevFull  = proj != null && prevMonthFull > 0 ? (proj - prevMonthFull) / prevMonthFull : null;
     const mix             = lmtdTotal > 0 ? abs / lmtdTotal : null;
+    var _ucrNote = 'Mes en curso: NR_ADJUST_FCST (ventana 7D abierta, alineado con E&amp;G). Meses cerrados: NEW_7D_ADJUST + REC_7D_ADJUST. Puede diferir de Vista Corp — metodologías distintas, ambas válidas.';
+    var dispLabel = (label === 'UCR Gest') ? label + ' <span title="'+_ucrNote+'" style="cursor:help;font-size:0.75em;color:#5899D1;vertical-align:super;font-weight:normal;">ℹ</span>' : label;
     html += '<tr data-canal="'+label+'">'
-      + '<td class="lbl-col" style="'+pad+';'+rs+'">'+label+'</td>'
+      + '<td class="lbl-col" style="'+pad+';'+rs+'">'+dispLabel+'</td>'
       + '<td style="'+rs+'">'+fmtNum(lmtd)+'</td>'
       + '<td class="mtd-col" style="'+rs+'">'+fmtNum(mtd)+'</td>'
       + '<td style="'+rs+'">'+fmtAbs(abs, dark)+'</td>'

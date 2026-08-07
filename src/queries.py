@@ -77,7 +77,8 @@ def get_nr_tc_sql(HIERARCHY_NR):
     leaves_paid_sg    = []   # source_tc = "individuals_performance" + solo strategy_group_tc
     leaves_paid_ng    = []   # source_tc = "individuals_performance" + network_group_name_tc
     leaves_org_legacy = []   # source_tc = "baseline_skipped" → ORG via NOT NETWORK APPE CTE
-    leaves_catchall   = []   # source_tc = "individuals_catchall" § 78 → catch-all no-whitelisted
+    leaves_catchall      = []   # source_tc = "individuals_catchall" § 78 → catch-all no-whitelisted
+    leaves_ucr_campaigns = []   # source_tc = "campaigns_ucr" → NR_ADJUST_FCST/7D_ADJUST desde BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR
 
     for c in HIERARCHY_NR:
         if not (c.get('is_leaf') and 'tc_mapping' in c):
@@ -97,6 +98,8 @@ def get_nr_tc_sql(HIERARCHY_NR):
             leaves_org_legacy.append(c)
         elif src == 'individuals_catchall':
             leaves_catchall.append(c)
+        elif src == 'campaigns_ucr':
+            leaves_ucr_campaigns.append(c)
 
     # Orden correcto: strategy_group_tc primero en el CASE WHEN de paid_tc.
     leaves_paid_tc = leaves_paid_sg + leaves_paid_ng
@@ -223,6 +226,58 @@ def get_nr_tc_sql(HIERARCHY_NR):
         pom_flag_cte_tc   = ""
         pom_flag_union_tc = ""
 
+    # ── UCR Gest via BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR (FCST/7D) ──────────────────────
+    # Andrés Garza (E&G) confirmó fuente y lógica el 2026-08-06:
+    #   mes en curso → NR_ADJUST_FCST (ventana abierta, envíos recientes sin cerrar 7D).
+    #   meses cerrados → NEW_7D_ADJUST + REC_7D_ADJUST (ventana 7D confirmada).
+    #   filtro: CLASIF_CAMPAIGNS = 'UCRANIA' (≠ CLASIFICACION en Torre Daily).
+    # COST: subquery inline de Torre Daily (metodología invariante — misma fuente que antes).
+    if leaves_ucr_campaigns:
+        _ucr_gest_label  = leaves_ucr_campaigns[0]['label']
+        _ucr_gest_clasif = leaves_ucr_campaigns[0]['tc_mapping']['clasif_campaigns_tc']
+        ucr_campaigns_cte_tc = f"""
+    -- ── ucr_campaigns_tc: UCR Gest N+R desde BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR ─────
+    -- Mes en curso: NR_ADJUST_FCST. Meses cerrados: NEW_7D_ADJUST + REC_7D_ADJUST.
+    -- COST: subquery de BT_OC_NR_REPORTE_TORRE_DAILY (CLASIFICACION='{_ucr_gest_clasif}').
+    ucr_campaigns_tc AS (
+      SELECT
+        c.SENT_DATE                                                         AS fecha_tc,
+        '{_ucr_gest_label}'                                                 AS CANAL,
+        SUM(CASE
+          WHEN DATE_TRUNC(c.SENT_DATE, MONTH) = DATE_TRUNC(CURRENT_DATE(), MONTH)
+          THEN COALESCE(c.NR_ADJUST_FCST, 0)
+          ELSE COALESCE(c.NEW_7D_ADJUST,  0) + COALESCE(c.REC_7D_ADJUST, 0)
+        END)                                                               AS NR,
+        COALESCE(SUM(t.ucr_cost), 0.0)                                    AS COST
+      FROM `meli-bi-data.SBOX_EG_MKT.BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR` c
+      LEFT JOIN (
+        SELECT DAY_ID,
+               SUM(COALESCE(CONSUMIDO_USD, 0) + COALESCE(COSTO_ENVIO_USD, 0)
+                                             + COALESCE(COSTO_MANTIKA_USD, 0)) AS ucr_cost
+        FROM `meli-bi-data.SBOX_EG_MKT.BT_OC_NR_REPORTE_TORRE_DAILY`
+        WHERE SITE            = 'MLM'
+          AND CLASIFICACION   = '{_ucr_gest_clasif}'
+          AND DAY_ID         >= DATE '2025-01-01'
+          AND DAY_ID          <= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        GROUP BY DAY_ID
+      ) t ON c.SENT_DATE = t.DAY_ID
+      WHERE c.SITE             = 'MLM'
+        AND c.CLASIF_CAMPAIGNS  = '{_ucr_gest_clasif}'
+        AND c.SENT_DATE        >= DATE '2025-01-01'
+        AND c.SENT_DATE         <= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+      GROUP BY c.SENT_DATE
+    ),"""
+        ucr_campaigns_union_tc = "UNION ALL\n      SELECT fecha_tc, CANAL, NR, COST FROM ucr_campaigns_tc"
+        _ucr_gest_day_cte      = "ucr_gest_day_tc AS (SELECT fecha_tc, SUM(NR) AS NR FROM ucr_campaigns_tc GROUP BY 1),"
+        _ucr_gest_day_join     = "LEFT JOIN ucr_gest_day_tc ucr_gest ON t.fecha_tc = ucr_gest.fecha_tc"
+        _ucr_gest_day_subtract = "- COALESCE(ucr_gest.NR, 0)"
+    else:
+        ucr_campaigns_cte_tc    = ""
+        ucr_campaigns_union_tc  = ""
+        _ucr_gest_day_cte       = ""
+        _ucr_gest_day_join      = ""
+        _ucr_gest_day_subtract  = ""
+
     # ── Fix A §78/§79: ORG = INAPP_TOTAL − OC − PAID − UCR_PRD_RE (residual exacto) ─
     # §79: ucr_prd_inapp_tc (RE placements) ahora aparece en UCR PRD del FM union_tc.
     # Para que FM ORG = Corp NO ATRIBUIDO, esas filas también deben restarse del residual.
@@ -255,7 +310,8 @@ def get_nr_tc_sql(HIERARCHY_NR):
     oc_day_tc   AS (SELECT fecha_tc, SUM(NR) AS NR FROM oc_tc   WHERE CANAL IS NOT NULL GROUP BY 1),
     paid_day_tc AS (SELECT fecha_tc, SUM(NR) AS NR FROM paid_tc  WHERE CANAL IS NOT NULL GROUP BY 1),
     {_ucr_day_cte}
-    -- ORG = INAPP_TOTAL − OC − PAID − UCR_PRD_RE (residual §78/§79)
+    {_ucr_gest_day_cte}
+    -- ORG = INAPP_TOTAL − OC − PAID − UCR_PRD_RE − UCR_GEST (residual §78/§79)
     -- GREATEST(..., 0): evita negativos en días con correcciones retroactivas.
     org_legacy_tc AS (
       SELECT
@@ -265,7 +321,8 @@ def get_nr_tc_sql(HIERARCHY_NR):
           t.NR_TOTAL
           - COALESCE(oc.NR, 0)
           - COALESCE(p.NR,  0)
-          {_ucr_day_subtract},
+          {_ucr_day_subtract}
+          {_ucr_gest_day_subtract},
           0
         )                   AS NR,
         0.0                 AS COST
@@ -273,6 +330,7 @@ def get_nr_tc_sql(HIERARCHY_NR):
       LEFT JOIN oc_day_tc   oc  ON t.fecha_tc = oc.fecha_tc
       LEFT JOIN paid_day_tc p   ON t.fecha_tc = p.fecha_tc
       {_ucr_day_join}
+      {_ucr_gest_day_join}
     ),"""
         org_legacy_union_tc = "UNION ALL\n      SELECT fecha_tc, CANAL, NR, COST FROM org_legacy_tc"
     else:
@@ -418,6 +476,7 @@ def get_nr_tc_sql(HIERARCHY_NR):
     ),
 
     {pom_flag_cte_tc}
+    {ucr_campaigns_cte_tc}
     {org_legacy_cte_tc}
     {catchall_cte_tc}
     -- ── union_tc: une todas las fuentes, descarta filas sin canal mapeado ───
@@ -431,6 +490,7 @@ def get_nr_tc_sql(HIERARCHY_NR):
       SELECT fecha_tc, CANAL, NR, COST FROM paid_tc             WHERE CANAL IS NOT NULL
       UNION ALL
       SELECT fecha_tc, CANAL, NR, COST FROM ucr_prd_inapp_tc
+      {ucr_campaigns_union_tc}
       {org_legacy_union_tc}
       {catchall_union_tc}
     ),
@@ -507,6 +567,10 @@ def _tc_channel_parts(HIERARCHY_NR):
             leaves_org_legacy.append(c)
         elif src == 'individuals_catchall':
             leaves_catchall.append(c)
+        elif src == 'campaigns_ucr':
+            # NR del mes en curso usa FCST desde BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR (get_nr_tc_sql).
+            # VPU y costos siguen usando Torre Daily (clasificacion_tc conservado en config).
+            leaves_oc_tc.append(c)
 
     leaves_paid_tc = leaves_paid_sg + leaves_paid_ng
 

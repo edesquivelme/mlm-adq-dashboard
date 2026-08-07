@@ -19,6 +19,20 @@ import json
 import plotly.graph_objects as go
 from processors import fmt_month
 
+# ── Nota metodología UCR Gest — tooltip para stakeholders ──────────────────
+_UCR_NOTE_TITLE = (
+    'Mes en curso: NR_ADJUST_FCST (ventana 7D abierta, alineado con E&amp;G). '
+    'Meses cerrados: NEW_7D_ADJUST + REC_7D_ADJUST. '
+    'Puede diferir de Vista Corp — metodologías distintas, ambas válidas.'
+)
+def _lbl(label):
+    """Label con icono ℹ si es UCR Gest — explica cambio de metodología."""
+    if label != 'UCR Gest':
+        return label
+    return (label + ' <span title="' + _UCR_NOTE_TITLE + '" '
+            'style="cursor:help;font-size:0.75em;color:#5899D1;'
+            'vertical-align:super;font-weight:normal;">ℹ</span>')
+
 
 def _cs(v):
     """Coerce to str NaN-safe. float NaN es truthy en Python, 'v or default' no funciona."""
@@ -82,7 +96,7 @@ def build_mom_table_html(data, plan_nr, plan_lines_data):
         dark = c['level'] != 'leaf'
         pad  = f'padding-left:{indent*14+10}px'
 
-        h += f'<tr data-canal="{label}"><td class="lbl-col" style="{pad};{row_s}">{label}</td>'
+        h += f'<tr data-canal="{label}"><td class="lbl-col" style="{pad};{row_s}">{_lbl(label)}</td>'
         for m in months: h += f'<td style="{row_s}" data-month="{m}">{fmt_val(monthly_nr[label].get(m,0))}</td>'
         h += '</tr>'
 
@@ -1372,7 +1386,7 @@ def build_perf_table_html(data):
         sep_cls   = ' class="perf-sep"' if sep else ''
 
         # ── Row A: Cabecera de canal (solo nombre, sin valores) ──
-        h += f'<tr{sep_cls} data-canal="{label}"><td class="lbl-col" style="{pad};{hdr_lbl_s}">{label}</td>'
+        h += f'<tr{sep_cls} data-canal="{label}"><td class="lbl-col" style="{pad};{hdr_lbl_s}">{_lbl(label)}</td>'
         for m in months:
             h += f'<td style="background:{bg}" data-month="{m}"></td>'
         h += '</tr>'
