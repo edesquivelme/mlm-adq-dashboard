@@ -6906,3 +6906,23 @@ El aviso 🕒 "Datos gestionados hasta DD/MM" de la pestaña MTD (§90.6) se mos
 | `src/template_dashboard.html` | §91.1: aviso de lag corte-aware (`refDay > managed_max_day`) + texto reescrito. |
 | `docs/History.md` | §91 (este documento) |
 | `CLAUDE.md` | §91 en historial |
+
+### 91.2 Fix condición alarma lag — `refDay` clampado (12-Ago-2026)
+
+**Síntoma:** La nota informativa 🕒 del lag de fuentes (§91.1) no aparecía en el dashboard aunque `gap_days > 0` y el corte D-1 iba por delante de `managed_max`.
+
+**Root cause:** La condición `refDay > managed_max_day` nunca se cumplía porque `refDay` ya había sido clampado al último día disponible en `daily_cum` antes de llegar al bloque de la alarma. Cuando D-1 pedía el día 11 y `managed_max` = día 10, `avail.filter(d <= 11)` retornaba días 1-10 → `refDay = 10` → `10 > 10 = false` → aviso oculto.
+
+**Fix (`src/template_dashboard.html`):** Cambiar la condición para comparar el día *solicitado* antes del clamp:
+```js
+// Antes (buggy)
+if (_mmMonth === month && refDay > _mmDay) {
+// Después (fix §91.2)
+var _requestedDay = cutoffMonth === month ? cutoffDate.getDate() : (days.length ? days[days.length-1] : refDay);
+if (_mmMonth === month && _requestedDay > _mmDay) {
+```
+`cutoffDate.getDate()` es el día real pedido (ej. 11) independiente de lo que esté disponible en BQ.
+
+**Patrón general:** Cualquier condición de UI en `renderMTDTable` que compare `refDay` contra un umbral externo heredará este bug — `refDay` siempre llega clampado al último día disponible. Usar siempre `cutoffDate.getDate()` para el día solicitado original.
+
+**Commit:** `a8c1f44` · Apps Script **v32**.
