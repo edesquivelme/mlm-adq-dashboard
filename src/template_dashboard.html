@@ -369,8 +369,9 @@ function renderMTDTable(month) {
     var _mm = _lag.managed_max;   // 'YYYY-MM-DD'
     var _mmMonth = _mm.slice(0,4) + _mm.slice(5,7);
     var _mmDay   = parseInt(_mm.slice(8,10), 10);
-    // Solo si el corte seleccionado cae en la zona de desfase (día > managed_max).
-    if (_mmMonth === month && refDay > _mmDay) {
+    // Compara el día *solicitado* (antes del clamp a días disponibles), no refDay que ya se clampeó.
+    var _requestedDay = cutoffMonth === month ? cutoffDate.getDate() : (days.length ? days[days.length-1] : refDay);
+    if (_mmMonth === month && _requestedDay > _mmDay) {
       var _mmDisp = _mm.slice(8,10) + '/' + _mm.slice(5,7) + '/' + _mm.slice(0,4);
       html += '<div style="margin:2px 0 10px;padding:7px 11px;background:#eef4fb;'
             + 'border-left:3px solid #5899D1;border-radius:3px;font-size:11px;color:#2d5986;line-height:1.5">'
