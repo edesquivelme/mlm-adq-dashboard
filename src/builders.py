@@ -2143,7 +2143,7 @@ def build_install_activation_tab_html(data):
 
     100% calculado en Python desde datos ya en memory:
       monthly_nr          → de NR Mensual (TC §71)
-      monthly_installs    → de Installs Mensual (BASE_INSTALLS_LIFECYCLE §88)
+      monthly_installs    → de Installs Mensual (LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE §92)
       monthly_inv_total   → de Performance (TC §72)
 
     Nota metodológica: UCR Gest N+R es lift-based (incremental Test-Control),
@@ -2748,7 +2748,7 @@ def build_installs_corp_bar_chart(data):
     GROUPS = [
         ('corp_noatrib', 'No Atribuído',  '#C8CDD8', ['corp_noatrib']),
         ('corp_others',  'OTHERS',        '#7A7D82', ['corp_mgm','corp_lp_brandformance','corp_lp_landings','corp_lp_partnerships','corp_lp_others','corp_lp_affiliates','corp_ucr_prd','corp_pom_others']),
-        # BASE_INSTALLS_LIFECYCLE no tiene breakdown por medio/sub-tipo →
+        # La fuente de Installs no tiene breakdown por medio/sub-tipo →
         # se usan los nodos padre directamente (corp_pom, corp_ucr_eg).
         # corp_oc_adhoc = Own Channels OTHERS (mapeado vía bq_key OC|OC_ADHOC|TOTAL).
         ('corp_pom',     'POM',           '#1FB8D4', ['corp_pom']),

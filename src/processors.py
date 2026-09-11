@@ -769,10 +769,12 @@ def process_comms_oc(bq_client_for_fresh_query, comms_oc_cache_file_path,
 # ══════════════════════════════════════════════════════════════════════════════
 
 def process_installs_monthly(bq_client, config):
-    """Installs mensuales por canal — SSOT: BASE_INSTALLS_LIFECYCLE (§88).
+    """Installs mensuales por canal — SSOT: LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE (§92).
 
-    Fuente: meli-bi-data.SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE
+    Fuente: meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE
     Verificado contra Corp screenshot: diferencia < 1% en todos los canales.
+    §92: migrado desde SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE, congelada el
+    2026-08-10 (ver docs/History.md §92).
 
     FM:   get_installs_monthly_sql()       → por label de hierarchy_nr
     Corp: get_installs_corp_monthly_sql()  → por corp_key / node_id
@@ -795,7 +797,7 @@ def process_installs_monthly(bq_client, config):
     LABELS = [c['label'] for c in HIERARCHY_NR]
 
     # ── 1. Query FM ──────────────────────────────────────────────────────────
-    print("  Consultando BQ — Installs FM (BASE_INSTALLS_LIFECYCLE)...")
+    print("  Consultando BQ — Installs FM (LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE)...")
     df_inst = bq_query(bq_client, get_installs_monthly_sql(HIERARCHY_NR))
 
     monthly_installs = {l: {} for l in LABELS}
@@ -833,7 +835,7 @@ def process_installs_monthly(bq_client, config):
                 )
 
     # ── 2. Query Corp ────────────────────────────────────────────────────────
-    print("  Consultando BQ — Installs Corp (BASE_INSTALLS_LIFECYCLE)...")
+    print("  Consultando BQ — Installs Corp (LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE)...")
     df_corp = bq_query(bq_client, get_installs_corp_monthly_sql())
 
     all_corp_ids = [c['id'] for c in HIERARCHY_NR_CORP if 'id' in c]

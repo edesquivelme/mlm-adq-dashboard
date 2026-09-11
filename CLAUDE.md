@@ -105,7 +105,7 @@ dashboard_v1.html               (HTML final generado — ~43.7 MB)
 | `perf-corp` | Performance_vista_Corp | Dinámica BQ | Cruce tablas corporativas |
 | `analisis-oc-ucr` | ● Análisis OC+UCR | **Estático** | `src/builders_analysis.py` — `build_oc_ucr_analysis_tab_html()` |
 | `comms-oc` | Comms_OC | **Híbrido** | 2 ramas TC (§75): `BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR` (Rama A: OC ACT + ADHOC + FLOWS + RE) + `BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR_ACQUISITION` (Rama B: UCR Gest). Granularidad diaria: `(COMM_ID, SENT_DATE, CANAL)`. Col `FUENTE_TABLA` distingue origen; cross-tabla → `'AMBAS'`. Cache Tier 1 reconstruido (20,708 registros Nov-25→Mar-26). Ver §75 `docs/History.md`. |
-| `installs-mensual` | Installs Mensual | **Dinámica BQ** | `process_installs_monthly()` — **§88**: Vista FM + Vista Corp. Fuente SSOT: `SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE`. Total = new+recovered+repeated. CPI = Inversión/Installs. Verificado <1% vs Corp screenshot. |
+| `installs-mensual` | Installs Mensual | **Dinámica BQ** | `process_installs_monthly()` — **§88/§92**: Vista FM + Vista Corp. Fuente SSOT: `WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE` (§92). Total = new+recovered+repeated. CPI = Inversión/Installs. Verificado <1% vs Corp screenshot. |
 | `reporting` | Reporting | **Dinámico estático** | `build_reporting_tab_html()` — **§85**: 3 secciones: (1) N+R in App + Valor Pred Corp 6M (2) New vs Rec + N+R Canal (3) OC Estrategia + Highlights. Charts Plotly descargables PNG. New/Rec: `process_new_rec_monthly()` → `BT_MP_USER_ENGAGEMENT_INAPP`. Metodología: `config/reporting_methodology.md`. |
 
 ### MTD D7
@@ -230,10 +230,11 @@ Desde la sesión §71 (2026-04-24), el dashboard usa las tablas certificadas del
 
 | Tabla | Dataset | Qué aporta | Usada por |
 |---|---|---|---|
-| **`BASE_INSTALLS_LIFECYCLE`** | `meli-bi-data.SBOX_MKTCORPMP` | Installs mensuales por canal con desglose new/recovered/repeated. SSOT certificado — <1% vs Corp screenshot. | `get_installs_monthly_sql()`, `get_installs_corp_monthly_sql()` |
+| **`LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE`** | `meli-bi-data.WHOWNER` | Installs mensuales por canal con desglose new/recovered/repeated. SSOT certificado — <1% vs Corp screenshot. **Fuente activa desde §92.** | `get_installs_monthly_sql()`, `get_installs_corp_monthly_sql()` |
+| ~~`BASE_INSTALLS_LIFECYCLE`~~ | ~~`meli-bi-data.SBOX_MKTCORPMP`~~ | ⛔ **CONGELADA** — última carga 2026-08-10, nunca recargada. Reemplazada en §92. | — |
 
-**Columnas clave de `BASE_INSTALLS_LIFECYCLE`:**
-- `channel`: POM · Own Channels MKT · Own Channels PRD · Own Channels OTHERS · MGM · Partnerships · BRANDFORMANCE · OTHERS · ORGANICO
+**Columnas clave de `LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE`** (idénticas a la tabla anterior, + `AUD_INS_DTTM` / `AUD_UPD_DTTM`)**:**
+- `channel`: POM · Own Channels MKT · Own Channels PRD · Own Channels OTHERS · MGM · BRANDFORMANCE · OTHERS · ORGANICO (`Partnerships` está en el `CASE` pero **no tiene filas en MLM**)
 - `fecha_mes`: YYYYMM
 - `flag_reinstall`: TRUE=reinstall / FALSE=instalación nueva
 - `qty_custs_potential_new` + `qty_custs_potential_recovered` + `qty_custs_repeated` = **Total Installs**
@@ -404,8 +405,8 @@ El JSON tiene **8 secciones** de primer nivel:
 | **`get_nr_corp_daily_tc_sql()`** | Torre Daily + Individuals Perf + **BT_MP_USER_ENGAGEMENT_INAPP** | Tabla Corp diaria. Mismos §78 fixes + `dia_del_mes`. | ✅ **ACTIVA §72/§78** |
 | `get_comms_oc_fresh_sql()` | `BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR` + `BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR_ACQUISITION` | Comms_OC Tier 2 (mes actual). 2 ramas UNION ALL con dedup FUENTE_TABLA. | ✅ **ACTIVA §75** |
 | **`get_new_rec_monthly_sql()`** | `BT_MP_USER_ENGAGEMENT_INAPP` | New vs Recovered total sitio por mes. Columnas: `new_nr`, `rec_nr`. D-1 cutoff. Usado por pestaña Reporting §85. | ✅ **NUEVA §85** |
-| **`get_installs_monthly_sql(HIERARCHY_NR)`** | `BASE_INSTALLS_LIFECYCLE` | Installs mensuales por canal FM. Total = new+rec+repeat. <1% vs Corp screenshot. Mapping: POM→'POM ADQ', Own Ch. MKT→'UCR Gest', Own Ch. OTHERS→'OC ACT', etc. | ✅ **NUEVA §88** |
-| **`get_installs_corp_monthly_sql()`** | `BASE_INSTALLS_LIFECYCLE` | Installs por corp_key para Vista Corp. Usa node_id directo para corp_ucr_eg y corp_pom (sin bq_key). | ✅ **NUEVA §88** |
+| **`get_installs_monthly_sql(HIERARCHY_NR)`** | `WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE` | Installs mensuales por canal FM. Total = new+rec+repeat. <1% vs Corp screenshot. Mapping: POM→'POM ADQ', Own Ch. MKT→'UCR Gest', Own Ch. OTHERS→'OC ACT', etc. | ✅ **§88 · fuente migrada §92** |
+| **`get_installs_corp_monthly_sql()`** | `WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE` | Installs por corp_key para Vista Corp. Usa node_id directo para corp_ucr_eg y corp_pom (sin bq_key). | ✅ **§88 · fuente migrada §92** |
 | `_tc_channel_parts(HIERARCHY_NR)` | — | Helper privado. Reutilizado por `get_vpu_tc_sql`, `get_costos_tc_sql`, `get_perf_paid_tc_sql`. | ✅ ACTIVA §72 |
 | ~~`get_nr_sql`~~ / ~~`get_costos_sql`~~ / ~~`get_perf_paid_sql`~~ / ~~`get_perf_vpu_sql`~~ / ~~`get_perf_roa_costos_sql`~~ / ~~`get_nr_corp_sql`~~ / ~~`get_nr_corp_daily_sql`~~ | ~~Tablas deprecated~~ | ~~Todas reemplazadas por TC~~ | 🗄️ conservadas sin uso |
 

@@ -6926,3 +6926,124 @@ if (_mmMonth === month && _requestedDay > _mmDay) {
 **Patrón general:** Cualquier condición de UI en `renderMTDTable` que compare `refDay` contra un umbral externo heredará este bug — `refDay` siempre llega clampado al último día disponible. Usar siempre `cutoffDate.getDate()` para el día solicitado original.
 
 **Commit:** `a8c1f44` · Apps Script **v32**.
+
+---
+
+## §92 — 11-Sep-2026 — Migración de fuente de Installs: `BASE_INSTALLS_LIFECYCLE` → `LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE`
+
+### 92.1 Antecedente — el diagnóstico
+
+Camilo reportó que la pestaña **Installs Mensual** "parecía estar mal", sin más detalle.
+La inspección confirmó que **el código estaba sano** (query, processor, builders y JS
+verificados uno por uno) y que el defecto era **100% de la fuente**:
+
+`meli-bi-data.SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE` dejó de recibir carga.
+
+| Evidencia | Valor |
+|---|---|
+| `created` | 2026-08-11 21:51:03.**395** UTC |
+| `last_modified` | 2026-08-11 21:51:03.**396** UTC (1 ms después) |
+| `MAX(fecha_diaria)` | **2026-08-10** |
+| Ago-26 cargado | 10 días (1→10) = **724,093** installs |
+| Jul-26 (referencia mes completo) | 2,200,412 installs |
+| Alcance | Los **9 canales** por igual |
+
+El gap de **1 milisegundo** entre `created` y `last_modified` indica que la tabla se
+escribió **una sola vez y nunca se volvió a tocar** — un build manual, no un pipeline
+programado. El dataset `SBOX_MKTCORPMP` en cambio estaba sano (46 de 585 tablas
+modificadas en Sep-26), así que el corte era **aislado de esta tabla**.
+
+**Tres síntomas visibles** que esto producía:
+1. **KPI cards en cero** — el selector abre en Sep-26 (`D.latest`) pero `installs_months`
+   terminaba en 202608 → el fallback `|| 0` renderizaba ceros. Esto es lo que vio Camilo.
+2. **Falso −67% MoM en agosto**, uniforme en los 9 canales (2.20M → 724.1K).
+3. **CPI inflado ~3x** — se dividía inversión de mes completo entre installs de 10 días.
+   Total $2.06 → $6.76; OC ACT $15.48 → $101.56.
+
+**Daño colateral**: la pestaña Install → Activation Rate ancla su análisis en el último
+mes cerrado (`last_m = 202608`), que estaba parcial → LFT, CPI y la matriz de eficiencia
+sobreestimados ~3x. Irónicamente el check interno `CPA ≈ CPI/LFT` seguía pasando porque
+el error se cancelaba en la división.
+
+### 92.2 La tabla nueva
+
+Melina (equipo Corp) compartió el reemplazo:
+
+**`meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE`**
+
+| Atributo | Valor |
+|---|---|
+| Tipo | VIEW |
+| Dataset | `WHOWNER` — **certificado**, ya no SBOX |
+| `description` | "Base de installs de la app MP clasificados por lifecycle (new/recovered/repeated) por canal y período mensual" |
+| Labels | `source: dataflow` · `created-by: mscarone` · `dataflow_mcp: yes` |
+| Contrato | **Idéntico** — mismas 9 columnas + `AUD_INS_DTTM` / `AUD_UPD_DTTM` |
+| `MAX(fecha_diaria)` | **2026-09-10** (D-1, fresca) |
+
+### 92.3 Validación antes de migrar
+
+**Comparativo mensual MLM, nueva vs vieja** (installs totales):
+
+| Mes | Nueva | Vieja | Diff |
+|---|---|---|---|
+| 202501 → 202605 | — | — | **−0.00%** en los 17 meses |
+| 202606 | 2,320,378 | 2,316,172 | +0.18% |
+| 202607 | 2,226,860 | 2,200,412 | +1.20% |
+| 202608 | **2,163,592** | 724,093 | +198.80% ← el mes truncado |
+| 202609 | 692,244 | — | (mes en curso, 10 días) |
+
+Jun y Jul difieren por **correcciones retroactivas** de la fuente nueva — magnitud menor
+y en la dirección esperada (la vieja nunca recibió el ajuste). El histórico se reproduce.
+
+**Catálogo de canales** — se verificó que ningún canal cae por el `HAVING INST_CANAL IS
+NOT NULL`:
+
+| Channel | Installs (desde 202501) | Mapeado |
+|---|---|---|
+| ORGANICO | 19,348,164 | sí |
+| POM | 14,035,183 | sí |
+| Own Channels OTHERS | 2,622,528 | sí |
+| Own Channels MKT | 2,599,353 | sí |
+| OTHERS | 1,887,474 | sí |
+| MGM | 882,097 | sí |
+| BRANDFORMANCE | 280,972 | sí |
+| Own Channels PRD | 127,825 | sí |
+
+**Installs perdidos por canal no mapeado: 0.** `Partnerships` sigue en el `CASE` pero
+**no tiene filas en MLM** — la rama es inocua, se conserva por si aparece.
+
+### 92.4 Cambios aplicados
+
+| Archivo | Cambio |
+|---|---|
+| `src/queries.py` | `FROM` de `get_installs_monthly_sql()` y `get_installs_corp_monthly_sql()` → `WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE`. Docstrings y comentarios actualizados con el contexto de §92. |
+| `src/processors.py` | Docstring de `process_installs_monthly()` + los 2 `print()` de progreso. |
+| `src/builders.py` | 2 comentarios que nombraban la tabla vieja. |
+| `CLAUDE.md` | Tabla de fuentes BQ, fila de la pestaña, mapeo de queries, catálogo de canales. Vieja marcada ⛔ CONGELADA. |
+| `README.md` · `Transfer.md` | Tabla de fuentes y requisitos de permisos (`SBOX_MKTCORPMP` ya no se necesita). |
+
+**Sin cambios** en `channels_config.json`, builders de HTML, ni JS — el contrato idéntico
+hizo que la migración fuera sólo el `FROM`.
+
+### 92.5 Resultado verificado
+
+Extraído del objeto `D` del HTML generado:
+
+- `installs_months`: 202501 → **202609** (21 meses). Sep-26 presente → **fin de los KPI en cero**.
+- Ago-26: **2,163,592** installs, MoM **−2.8%** (antes −67%).
+- Sep-26 parcial (692,244 = 10 días) — consistente: installs e inversión cortan ambos el
+  **10-Sep**, así que el CPI del mes en curso no se infla.
+- La pestaña Install → Activation Rate se corrige sola: `last_m = 202608` ahora es un mes completo.
+
+### 92.6 Nota operativa — el 403 de scopes reincidió
+
+El deploy de esta sesión falló primero con `403 ACCESS_TOKEN_SCOPE_INSUFFICIENT`. El archivo
+ADC se había reescrito el **2026-09-10 19:23** con un `gcloud auth application-default login`
+**sin** `--scopes`. Es la **segunda vez en cuatro días** (la primera, 2026-09-09). Firma:
+`scopes: None` en el JSON del ADC. Fix = los dos comandos de siempre (`login --scopes=...`
+y `set-quota-project`). BigQuery no se ve afectado, por eso la generación pasa limpia y el
+ciclo revienta después.
+
+**Pendiente abierto:** sigue sin implementarse la alarma de frescura para Installs en Paso 0
+(modelada sobre `check_source_lag()` de §90). Con la fuente nueva el riesgo baja, pero el
+incidente demostró que una fuente puede congelarse 30 días sin que nadie se entere.

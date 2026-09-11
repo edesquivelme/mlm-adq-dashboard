@@ -33,8 +33,7 @@ Sin esto, el comando `python src/deploy_appscript_v1.py` te dará error 403.
 Confirmar que tu cuenta tiene permisos de lectura en `meli-bi-data` sobre:
 - `SBOX_EG_MKT` (tablas BT_OC_*)
 - `SBOX_MARKETING` (tablas BT_MP_*)
-- `SBOX_MKTCORPMP` (tabla BASE_INSTALLS_LIFECYCLE)
-- `WHOWNER` (tabla LK_API_CURRENCY_CONVERSION)
+- `WHOWNER` (tablas LK_API_CURRENCY_CONVERSION, LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE)
 
 ---
 

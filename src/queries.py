@@ -1976,10 +1976,16 @@ def get_new_rec_monthly_sql():
 
 
 def get_installs_monthly_sql(HIERARCHY_NR):
-    """SQL installs mensuales por canal — SSOT: BASE_INSTALLS_LIFECYCLE (§88).
+    """SQL installs mensuales por canal — SSOT: LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE (§92).
 
-    Fuente certificada: meli-bi-data.SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE
+    Fuente certificada: meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE
     Verificado contra Corp screenshot: diferencia < 1% en todos los canales.
+
+    §92 — Migración de fuente. La anterior (SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE)
+    quedó congelada el 2026-08-10 y nunca se recargó. La vista de WHOWNER tiene
+    contrato idéntico (mismas 9 columnas + AUD_*), se alimenta por Dataflow y
+    reproduce el histórico con diferencia -0.00% de Ene-25 a May-26
+    (Jun-26 +0.18% y Jul-26 +1.20% son correcciones retroactivas de la fuente).
 
     Total installs = qty_custs_potential_new + qty_custs_potential_recovered
                    + qty_custs_repeated   (todos los usuarios que instalaron)
@@ -1990,7 +1996,7 @@ def get_installs_monthly_sql(HIERARCHY_NR):
       Own Channels PRD   → 'UCR PRD'   (product OC)
       Own Channels OTHERS→ 'OC ACT'    (OC misceláneos / ad-hoc)
       MGM                → 'MGM ADQ'
-      Partnerships       → 'L&P ADQ'   (Landings & Partnerships)
+      Partnerships       → 'L&P ADQ'   (Landings & Partnerships — sin filas en MLM)
       BRANDFORMANCE      → 'L&P ADQ'   (Brandformance ⊂ L&P)
       OTHERS             → 'L&P ADQ'   (OTHERS ⊂ L&P)
       ORGANICO           → 'ORG'
@@ -2001,9 +2007,10 @@ def get_installs_monthly_sql(HIERARCHY_NR):
     """
     return """
     -- ═══════════════════════════════════════════════════════════════════════════
-    -- get_installs_monthly_sql() — SSOT BASE_INSTALLS_LIFECYCLE §88
+    -- get_installs_monthly_sql() — SSOT LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE §92
     -- Verificado vs Corp screenshot: diferencia < 1% en todos los canales.
     -- Total = new + recovered + repeated (todos los usuarios que instalaron)
+    -- §92: migrado desde SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE (congelada 10-Ago-26)
     -- ═══════════════════════════════════════════════════════════════════════════
     SELECT
       fecha_mes                                                            AS MONTH_ID,
@@ -2021,7 +2028,7 @@ def get_installs_monthly_sql(HIERARCHY_NR):
       SUM(qty_custs_potential_new
         + qty_custs_potential_recovered
         + qty_custs_repeated)                                              AS INSTALLS
-    FROM `meli-bi-data.SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE`
+    FROM `meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE`
     WHERE sit_site_id = 'MLM'
       AND fecha_mes  >= '202501'
     GROUP BY 1, 2
@@ -2031,7 +2038,7 @@ def get_installs_monthly_sql(HIERARCHY_NR):
 
 
 def get_installs_corp_monthly_sql():
-    """SQL installs Corp por corp_key — SSOT: BASE_INSTALLS_LIFECYCLE (§88).
+    """SQL installs Corp por corp_key — SSOT: LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE (§92).
 
     Misma fuente que get_installs_monthly_sql() mapeada a corp_key del hierarchy.
 
@@ -2043,14 +2050,14 @@ def get_installs_corp_monthly_sql():
     """
     return """
     -- ═══════════════════════════════════════════════════════════════════════════
-    -- get_installs_corp_monthly_sql() — Installs Corp SSOT BASE_INSTALLS §88
+    -- get_installs_corp_monthly_sql() — Installs Corp SSOT LK_MP_INDIVIDUALS §92
     -- Para UCR y POM se usa node_id directamente (sin breakdown de medio).
     -- ═══════════════════════════════════════════════════════════════════════════
     SELECT
       fecha_mes                                                            AS fecha_mes_corp,
       CASE channel
         -- UCR: Own Channels MKT → node_id corp_ucr_eg (padre de todos los medios)
-        -- BASE_INSTALLS_LIFECYCLE no tiene breakdown por medio, se agrega al padre.
+        -- La tabla no tiene breakdown por medio, se agrega al padre.
         WHEN 'Own Channels MKT'    THEN 'corp_ucr_eg'
         WHEN 'Own Channels PRD'    THEN 'OTH|UCR_PRD|TOTAL'
         WHEN 'Own Channels OTHERS' THEN 'OC|OC_ADHOC|TOTAL'
@@ -2065,7 +2072,7 @@ def get_installs_corp_monthly_sql():
       SUM(qty_custs_potential_new
         + qty_custs_potential_recovered
         + qty_custs_repeated)                                              AS installs_corp
-    FROM `meli-bi-data.SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE`
+    FROM `meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE`
     WHERE sit_site_id = 'MLM'
       AND fecha_mes  >= '202501'
     GROUP BY 1, 2

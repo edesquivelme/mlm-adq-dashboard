@@ -277,7 +277,7 @@ MLM_ADQ_Dash/
 | `BT_OC_NR_REPORTE_TORRE_DAILY` | `meli-bi-data.SBOX_EG_MKT` | N+R y costos de Own Channels (lift-based) |
 | `BT_MP_INDIVIDUALS_PERFORMANCE` | `meli-bi-data.SBOX_MARKETING` | N+R y costos de canales Paid (POM, MGM, L&P) |
 | `BT_MP_USER_ENGAGEMENT_INAPP` | `meli-bi-data.SBOX_MARKETING` | Total N+R in-app (fuente del residual Orgánico) |
-| `BASE_INSTALLS_LIFECYCLE` | `meli-bi-data.SBOX_MKTCORPMP` | Installs mensuales por canal |
+| `LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE` | `meli-bi-data.WHOWNER` | Installs mensuales por canal (§92 — reemplaza a `SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE`, congelada) |
 | `BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR` | `meli-bi-data.SBOX_EG_MKT` | Comms_OC detalle por comunicación |
 | `BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR_ACQUISITION` | `meli-bi-data.SBOX_EG_MKT` | Comms_OC Ucrania Adquisición |
 
