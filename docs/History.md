@@ -7044,6 +7044,40 @@ ADC se había reescrito el **2026-09-10 19:23** con un `gcloud auth application-
 y `set-quota-project`). BigQuery no se ve afectado, por eso la generación pasa limpia y el
 ciclo revienta después.
 
-**Pendiente abierto:** sigue sin implementarse la alarma de frescura para Installs en Paso 0
-(modelada sobre `check_source_lag()` de §90). Con la fuente nueva el riesgo baja, pero el
-incidente demostró que una fuente puede congelarse 30 días sin que nadie se entere.
+### 92.7 Alarma de frescura de Installs — `check_installs_freshness()`
+
+El incidente demostró que **una fuente puede congelarse 30 días sin que nada falle**: el
+pipeline corre limpio, el HTML se genera, el deploy pasa. El dashboard simplemente renderiza
+con fidelidad una tabla truncada. Nada en el flujo mira la fuente, así que hay que mirarla
+explícitamente.
+
+Nueva función en `src/gen_dashboard_v1.py`, modelada sobre `check_source_lag()` de §90 y
+enganchada como **Paso 0b**:
+
+```python
+_INSTALLS_TABLE     = "meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE"
+_INSTALLS_LAG_WARN  = 3   # días de atraso vs D-1 → WARNING
+_INSTALLS_LAG_CRIT  = 7   # días de atraso vs D-1 → CRÍTICO (posible congelamiento)
+```
+
+1 query barata (`MAX(fecha_diaria)` + días cargados del mes en curso, con
+`CURRENT_DATE('America/Mexico_City')`). Tres estados: ✅ al día · ⚠️ atraso 3–6 días ·
+🚨 crítico ≥7 días.
+
+**Diferencia clave vs la alarma §90:** aquella tiene auto-ajuste (`_INAPP_MANAGED_CAP` capa el
+residual). Aquí **no hay auto-ajuste posible** — si la fuente no carga, no hay de dónde sacar
+el dato. La acción es humana: escalar a los owners. Por eso el mensaje crítico dice
+explícitamente qué se rompe (MoM y CPI distorsionados mientras la inversión sigue cargando)
+y qué hacer.
+
+No bloquea la generación: los datos hasta el último día cargado son válidos.
+
+**Validada en las dos ramas** apuntándola a ambas tablas:
+
+| Caso | Fuente | Salida |
+|---|---|---|
+| 1 | `WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE` | ✅ cargado hasta 2026-09-10, `lag_dias=0` |
+| 2 | `SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE` | 🚨 **31 días de atraso**, `dias_mes_actual=0` |
+
+Con esta alarma activa, el incidente se habría detectado **28 días antes** de que Camilo lo
+reportara.

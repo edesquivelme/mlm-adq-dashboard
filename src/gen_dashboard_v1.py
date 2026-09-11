@@ -126,6 +126,73 @@ def check_source_lag(client):
     return result
 
 
+# Fuente SSOT de Installs (§92) y umbrales de la alarma de frescura.
+_INSTALLS_TABLE     = "meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE"
+_INSTALLS_LAG_WARN  = 3   # días de atraso vs D-1 → WARNING
+_INSTALLS_LAG_CRIT  = 7   # días de atraso vs D-1 → CRÍTICO (posible congelamiento)
+
+
+def check_installs_freshness(client):
+    """ALARMA §92 — Frescura de la fuente de Installs.
+
+    Motivo: la fuente anterior (SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE) se
+    congeló el 2026-08-10 y estuvo 30 días sin carga **sin que nadie lo notara**.
+    El dashboard renderizaba fielmente una tabla truncada: KPI cards en cero,
+    un falso −67% MoM uniforme en todos los canales, y CPI inflado ~3x al
+    dividir inversión de mes completo entre installs de medio mes.
+
+    Nada en el pipeline falla cuando la fuente se congela — por eso hace falta
+    mirarla explícitamente. Esta función corre 1 query barata (MAX de fechas) e
+    imprime el estado. **No bloquea**: los datos hasta el último día cargado son
+    válidos; lo que se pierde es lo posterior.
+
+    A diferencia de la alarma §90, aquí NO hay auto-ajuste posible: si la fuente
+    no carga, no hay de dónde sacar el dato. La acción es humana — escalar a los
+    owners de la tabla (equipo Corp).
+
+    Retorna dict con max_dia, max_mes, lag_dias y dias_mes_actual.
+    """
+    sql = f"""
+    SELECT
+      MAX(fecha_diaria)                                                    AS max_dia,
+      MAX(fecha_mes)                                                       AS max_mes,
+      DATE_DIFF(DATE_SUB(CURRENT_DATE('America/Mexico_City'), INTERVAL 1 DAY),
+                MAX(fecha_diaria), DAY)                                    AS lag_dias,
+      COUNT(DISTINCT IF(fecha_mes = FORMAT_DATE('%Y%m',
+                                                CURRENT_DATE('America/Mexico_City')),
+                        fecha_diaria, NULL))                               AS dias_mes_actual
+    FROM `{_INSTALLS_TABLE}`
+    WHERE sit_site_id = 'MLM'
+      AND fecha_mes  >= '202501'
+    """
+    row = list(client.query(sql).result())[0]
+    result = {'max_dia': row.max_dia, 'max_mes': row.max_mes,
+              'lag_dias': row.lag_dias, 'dias_mes_actual': row.dias_mes_actual}
+
+    if row.lag_dias >= _INSTALLS_LAG_CRIT:
+        print("  " + "=" * 62)
+        print(f"  🚨 [ALARMA §92] INSTALLS SIN CARGA: {row.lag_dias} día(s) de atraso")
+        print(f"      Fuente .................... {_INSTALLS_TABLE.split('.', 1)[1]}")
+        print(f"      Último día cargado ........ {row.max_dia}  (último mes: {row.max_mes})")
+        print(f"      Días del mes en curso ..... {row.dias_mes_actual}")
+        print(f"      → Posible CONGELAMIENTO de la fuente. Sin auto-ajuste posible.")
+        print(f"      → La pestaña Installs mostrará MoM y CPI DISTORSIONADOS")
+        print(f"        mientras la inversión siga cargando normalmente.")
+        print(f"      → ACCIÓN: escalar a los owners de la tabla (Corp). Ver §92.")
+        print("  " + "=" * 62)
+    elif row.lag_dias >= _INSTALLS_LAG_WARN:
+        print("  " + "=" * 62)
+        print(f"  ⚠️  [ALARMA §92] Installs con atraso: {row.lag_dias} día(s)")
+        print(f"      Último día cargado ........ {row.max_dia}  (último mes: {row.max_mes})")
+        print(f"      Días del mes en curso ..... {row.dias_mes_actual}")
+        print(f"      → Vigilar: si supera {_INSTALLS_LAG_CRIT} días, tratar como congelamiento.")
+        print("  " + "=" * 62)
+    else:
+        print(f"  ✅ Installs al día: cargado hasta {row.max_dia} "
+              f"({row.dias_mes_actual} día(s) del mes en curso)")
+    return result
+
+
 def load_plan(config, all_months):
     """Carga TODOS los datos de plan desde el Excel 'Resumen Plan Acq 2026.xlsx'.
 
@@ -944,6 +1011,8 @@ def assemble():
     client = bigquery.Client(project=BQ_PROJECT)
     print(">>> Paso 0: Verificando sincronía de fuentes (ALARMA §90)...")
     source_lag = check_source_lag(client)
+    print(">>> Paso 0b: Verificando frescura de Installs (ALARMA §92)...")
+    installs_lag = check_installs_freshness(client)
     data   = process_all(config, client, N_PRIOR)
 
     # ── 3. Plan Excel ─────────────────────────────────────────
