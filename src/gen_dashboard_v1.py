@@ -127,69 +127,108 @@ def check_source_lag(client):
 
 
 # Fuente SSOT de Installs (§92) y umbrales de la alarma de frescura.
-_INSTALLS_TABLE     = "meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE"
-_INSTALLS_LAG_WARN  = 3   # días de atraso vs D-1 → WARNING
-_INSTALLS_LAG_CRIT  = 7   # días de atraso vs D-1 → CRÍTICO (posible congelamiento)
+_INSTALLS_TABLE           = "meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE"
+_INSTALLS_DISTORSION_WARN = 0.05   # +5%  de inflación implícita en CPI → WARNING
+_INSTALLS_DISTORSION_CRIT = 0.15   # +15% de inflación implícita en CPI → CRÍTICO
+_INSTALLS_FROZEN_DAYS     = 10     # días sin carga vs D-1 → congelamiento (red de seguridad)
+_INSTALLS_MIN_DIAS_EVAL   = 5      # mínimo de días de inversión para juzgar la distorsión
 
 
-def check_installs_freshness(client):
-    """ALARMA §92 — Frescura de la fuente de Installs.
+def check_installs_freshness(client, managed_max):
+    """ALARMA §92 — Frescura de Installs, medida por DISTORSIÓN DE CPI.
 
     Motivo: la fuente anterior (SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE) se
     congeló el 2026-08-10 y estuvo 30 días sin carga **sin que nadie lo notara**.
-    El dashboard renderizaba fielmente una tabla truncada: KPI cards en cero,
-    un falso −67% MoM uniforme en todos los canales, y CPI inflado ~3x al
-    dividir inversión de mes completo entre installs de medio mes.
+    Nada en el pipeline falla cuando una fuente se congela — el dashboard
+    renderiza con fidelidad una tabla truncada.
 
-    Nada en el pipeline falla cuando la fuente se congela — por eso hace falta
-    mirarla explícitamente. Esta función corre 1 query barata (MAX de fechas) e
-    imprime el estado. **No bloquea**: los datos hasta el último día cargado son
-    válidos; lo que se pierde es lo posterior.
+    **Por qué NO se alarma por días de atraso** (revisión del umbral original
+    3/7 días): lo que rompe la pestaña no es el atraso en sí, sino que Installs
+    venga más corto que la INVERSIÓN. El CPI se infla por el factor
+    `días_inversión / días_installs`, así que el mismo atraso hace daño muy
+    distinto según el día del mes:
 
-    A diferencia de la alarma §90, aquí NO hay auto-ajuste posible: si la fuente
-    no carga, no hay de dónde sacar el dato. La acción es humana — escalar a los
-    owners de la tabla (equipo Corp).
+        3 días de atraso el día 10 → CPI +43%   |  el día 28 → CPI +12%
+        7 días de atraso el día 10 → CPI +233%  |  el día 28 → CPI +33%
 
-    Retorna dict con max_dia, max_mes, lag_dias y dias_mes_actual.
+    Un umbral fijo en días alarma de más a fin de mes y de menos al principio.
+    Y si Installs e inversión van atrasadas **parejo**, el CPI está correcto y
+    no hay nada que reportar — el umbral en días gritaría igual.
+
+    `managed_max` viene de check_source_lag(): hasta dónde cargaron Torre Daily
+    e Individuals Perf, o sea el corte real de la inversión. Comparar contra eso
+    (y no contra el calendario) es lo que mide el daño real.
+
+    Se conserva un tope absoluto (_INSTALLS_FROZEN_DAYS) como red de seguridad
+    para el caso "la tabla murió", donde el número exacto da igual.
+
+    **No bloquea**: los datos hasta el último día cargado son válidos. A
+    diferencia de la alarma §90 aquí NO hay auto-ajuste posible — si la fuente
+    no carga, no hay de dónde sacar el dato. La acción es humana: escalar a Corp.
+
+    Retorna dict con max_dia, max_mes, dias_installs, dias_inversion,
+    distorsion_cpi y lag_calendario.
     """
+    mes_ref = managed_max.strftime('%Y%m')
     sql = f"""
     SELECT
       MAX(fecha_diaria)                                                    AS max_dia,
       MAX(fecha_mes)                                                       AS max_mes,
+      COUNT(DISTINCT IF(fecha_mes = '{mes_ref}', fecha_diaria, NULL))      AS dias_installs,
       DATE_DIFF(DATE_SUB(CURRENT_DATE('America/Mexico_City'), INTERVAL 1 DAY),
-                MAX(fecha_diaria), DAY)                                    AS lag_dias,
-      COUNT(DISTINCT IF(fecha_mes = FORMAT_DATE('%Y%m',
-                                                CURRENT_DATE('America/Mexico_City')),
-                        fecha_diaria, NULL))                               AS dias_mes_actual
+                MAX(fecha_diaria), DAY)                                    AS lag_calendario
     FROM `{_INSTALLS_TABLE}`
     WHERE sit_site_id = 'MLM'
       AND fecha_mes  >= '202501'
     """
     row = list(client.query(sql).result())[0]
-    result = {'max_dia': row.max_dia, 'max_mes': row.max_mes,
-              'lag_dias': row.lag_dias, 'dias_mes_actual': row.dias_mes_actual}
 
-    if row.lag_dias >= _INSTALLS_LAG_CRIT:
+    dias_inv   = managed_max.day        # días de inversión cargados en mes_ref
+    dias_inst  = row.dias_installs      # días de installs  cargados en mes_ref
+    distorsion = (dias_inv / dias_inst - 1) if dias_inst else None
+
+    result = {'max_dia': row.max_dia, 'max_mes': row.max_mes,
+              'dias_installs': dias_inst, 'dias_inversion': dias_inv,
+              'distorsion_cpi': distorsion, 'lag_calendario': row.lag_calendario}
+
+    def _encabezado(icono, titulo):
         print("  " + "=" * 62)
-        print(f"  🚨 [ALARMA §92] INSTALLS SIN CARGA: {row.lag_dias} día(s) de atraso")
-        print(f"      Fuente .................... {_INSTALLS_TABLE.split('.', 1)[1]}")
-        print(f"      Último día cargado ........ {row.max_dia}  (último mes: {row.max_mes})")
-        print(f"      Días del mes en curso ..... {row.dias_mes_actual}")
-        print(f"      → Posible CONGELAMIENTO de la fuente. Sin auto-ajuste posible.")
-        print(f"      → La pestaña Installs mostrará MoM y CPI DISTORSIONADOS")
-        print(f"        mientras la inversión siga cargando normalmente.")
+        print(f"  {icono} {titulo}")
+        print(f"      Installs  hasta ... {row.max_dia}  ({dias_inst} día(s) de {mes_ref})")
+        print(f"      Inversión hasta ... {managed_max}  ({dias_inv} día(s) de {mes_ref})")
+
+    if dias_inst == 0:
+        _encabezado("🚨", f"[ALARMA §92] INSTALLS SIN DATOS en {mes_ref}")
+        print(f"      → La pestaña mostrará KPI cards en CERO para {mes_ref}.")
         print(f"      → ACCIÓN: escalar a los owners de la tabla (Corp). Ver §92.")
         print("  " + "=" * 62)
-    elif row.lag_dias >= _INSTALLS_LAG_WARN:
+    elif row.lag_calendario >= _INSTALLS_FROZEN_DAYS:
+        _encabezado("🚨", f"[ALARMA §92] FUENTE CONGELADA: {row.lag_calendario} día(s) sin carga")
+        print(f"      → Sin auto-ajuste posible: si la fuente no carga, no hay dato.")
+        print(f"      → ACCIÓN: escalar a los owners de la tabla (Corp). Ver §92.")
         print("  " + "=" * 62)
-        print(f"  ⚠️  [ALARMA §92] Installs con atraso: {row.lag_dias} día(s)")
-        print(f"      Último día cargado ........ {row.max_dia}  (último mes: {row.max_mes})")
-        print(f"      Días del mes en curso ..... {row.dias_mes_actual}")
-        print(f"      → Vigilar: si supera {_INSTALLS_LAG_CRIT} días, tratar como congelamiento.")
+    elif dias_inv < _INSTALLS_MIN_DIAS_EVAL:
+        # Arranque de mes: el cociente días_inv/días_inst es demasiado volátil
+        # para juzgarlo (día 2 vs día 1 = +100%). Se informa, no se alarma.
+        print(f"  ℹ️  Installs: {row.max_dia} vs inversión {managed_max} — "
+              f"arranque de {mes_ref} ({dias_inst} vs {dias_inv} días), "
+              f"distorsión no evaluable aún")
+    elif distorsion >= _INSTALLS_DISTORSION_CRIT:
+        _encabezado("🚨", f"[ALARMA §92] CPI INFLADO ~{distorsion * 100:.0f}% en {mes_ref}")
+        print(f"      → Installs va {dias_inv - dias_inst} día(s) detrás de la inversión.")
+        print(f"      → CPI y MoM de {mes_ref} NO son confiables.")
+        print(f"      → ACCIÓN: escalar a los owners de la tabla (Corp). Ver §92.")
+        print("  " + "=" * 62)
+    elif distorsion >= _INSTALLS_DISTORSION_WARN:
+        _encabezado("⚠️ ", f"[ALARMA §92] CPI inflado ~{distorsion * 100:.0f}% en {mes_ref}")
+        print(f"      → Installs va {dias_inv - dias_inst} día(s) detrás de la inversión.")
+        print(f"      → Vigilar: si supera {_INSTALLS_DISTORSION_CRIT * 100:.0f}%, "
+              f"tratar como incidente.")
         print("  " + "=" * 62)
     else:
-        print(f"  ✅ Installs al día: cargado hasta {row.max_dia} "
-              f"({row.dias_mes_actual} día(s) del mes en curso)")
+        print(f"  ✅ Installs alineado con inversión: {row.max_dia} vs {managed_max} "
+              f"({dias_inst} vs {dias_inv} día(s) de {mes_ref}) — "
+              f"distorsión CPI {distorsion * 100:+.0f}%")
     return result
 
 
@@ -1012,7 +1051,7 @@ def assemble():
     print(">>> Paso 0: Verificando sincronía de fuentes (ALARMA §90)...")
     source_lag = check_source_lag(client)
     print(">>> Paso 0b: Verificando frescura de Installs (ALARMA §92)...")
-    installs_lag = check_installs_freshness(client)
+    installs_lag = check_installs_freshness(client, source_lag['managed_max'])
     data   = process_all(config, client, N_PRIOR)
 
     # ── 3. Plan Excel ─────────────────────────────────────────

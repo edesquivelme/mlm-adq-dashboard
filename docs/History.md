@@ -7051,33 +7051,62 @@ pipeline corre limpio, el HTML se genera, el deploy pasa. El dashboard simplemen
 con fidelidad una tabla truncada. Nada en el flujo mira la fuente, así que hay que mirarla
 explícitamente.
 
-Nueva función en `src/gen_dashboard_v1.py`, modelada sobre `check_source_lag()` de §90 y
-enganchada como **Paso 0b**:
+Nueva función `check_installs_freshness()` en `src/gen_dashboard_v1.py`, enganchada como
+**Paso 0b**, justo después de la alarma §90 y reusando su `managed_max`.
+
+#### El umbral en días era la métrica equivocada
+
+La primera versión copió el patrón de §90: WARNING a 3 días de atraso, CRÍTICO a 7. Al
+revisarlo se vio que **la forma del umbral está mal**, no solo el número.
+
+Lo que rompe la pestaña no es el atraso en sí, sino que Installs venga **más corto que la
+inversión**. El CPI se infla por el factor `días_inversión / días_installs`, así que el mismo
+atraso hace daño muy distinto según el día del mes:
+
+| Atraso | Día 10 del mes | Día 28 del mes |
+|---|---|---|
+| 3 días | CPI **+43%** | CPI +12% |
+| 7 días | CPI **+233%** | CPI +33% |
+
+Con el umbral en días, 3 días de atraso el día 10 —que ya infla el CPI 43%— pasaba como
+simple warning; y 7 días el día 28 disparaba crítico con apenas 33% de distorsión. Mal
+calibrado en ambos extremos. Peor aún: si Installs e inversión van atrasadas **parejo**, el
+CPI está correcto y no hay nada que reportar — el umbral en días gritaba igual.
+
+#### Diseño final — alarma por distorsión
 
 ```python
-_INSTALLS_TABLE     = "meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE"
-_INSTALLS_LAG_WARN  = 3   # días de atraso vs D-1 → WARNING
-_INSTALLS_LAG_CRIT  = 7   # días de atraso vs D-1 → CRÍTICO (posible congelamiento)
+_INSTALLS_TABLE           = "meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE"
+_INSTALLS_DISTORSION_WARN = 0.05   # +5%  de inflación implícita en CPI → WARNING
+_INSTALLS_DISTORSION_CRIT = 0.15   # +15% de inflación implícita en CPI → CRÍTICO
+_INSTALLS_FROZEN_DAYS     = 10     # días sin carga vs D-1 → congelamiento (red de seguridad)
+_INSTALLS_MIN_DIAS_EVAL   = 5      # mínimo de días de inversión para juzgar la distorsión
 ```
 
-1 query barata (`MAX(fecha_diaria)` + días cargados del mes en curso, con
-`CURRENT_DATE('America/Mexico_City')`). Tres estados: ✅ al día · ⚠️ atraso 3–6 días ·
-🚨 crítico ≥7 días.
+La comparación es contra `managed_max` (de `check_source_lag()`), que es el corte real de la
+inversión — **no contra el calendario**. 1 query barata: `MAX(fecha_diaria)` + días de
+installs cargados en el mes de referencia.
+
+**El piso `_INSTALLS_MIN_DIAS_EVAL`** existe porque al arranque de mes el cociente es
+demasiado volátil: día 2 de inversión contra día 1 de installs da +100% y dispararía crítico
+todos los meses. Por debajo de 5 días se informa (ℹ️) pero no se alarma; los checks de
+congelamiento y de "sin datos" sí siguen activos.
 
 **Diferencia clave vs la alarma §90:** aquella tiene auto-ajuste (`_INAPP_MANAGED_CAP` capa el
 residual). Aquí **no hay auto-ajuste posible** — si la fuente no carga, no hay de dónde sacar
-el dato. La acción es humana: escalar a los owners. Por eso el mensaje crítico dice
-explícitamente qué se rompe (MoM y CPI distorsionados mientras la inversión sigue cargando)
-y qué hacer.
+el dato. La acción es humana: escalar a los owners. Por eso el mensaje crítico nombra qué se
+rompe y qué hacer. No bloquea la generación: los datos hasta el último día cargado son válidos.
 
-No bloquea la generación: los datos hasta el último día cargado son válidos.
+#### Validación — 5 ramas
 
-**Validada en las dos ramas** apuntándola a ambas tablas:
-
-| Caso | Fuente | Salida |
+| Caso | Escenario | Salida |
 |---|---|---|
-| 1 | `WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE` | ✅ cargado hasta 2026-09-10, `lag_dias=0` |
-| 2 | `SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE` | 🚨 **31 días de atraso**, `dias_mes_actual=0` |
+| A | Real de hoy: ambos al 10-Sep | ✅ distorsión CPI +0% |
+| B | Arranque de mes (inversión día 3) | ℹ️ no evaluable aún — **no alarma** |
+| C | Inversión día 11 vs installs día 10 | ⚠️ CPI inflado ~10% |
+| D | Inversión día 13 vs installs día 10 | 🚨 CPI inflado ~30% |
+| E | Tabla vieja congelada, inversión al 10-Sep | 🚨 **INSTALLS SIN DATOS en 202609** |
 
-Con esta alarma activa, el incidente se habría detectado **28 días antes** de que Camilo lo
-reportara.
+El caso E reproduce el incidente real y lo clasifica exactamente como lo vivió el usuario:
+KPI cards en cero. Con esta alarma activa se habría detectado **28 días antes** de que Camilo
+lo reportara.
