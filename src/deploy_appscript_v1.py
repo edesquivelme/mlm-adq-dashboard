@@ -108,7 +108,7 @@ APPSSCRIPT_MANIFEST = json.dumps({
     "exceptionLogging": "STACKDRIVER",
     "runtimeVersion": "V8",
     "webapp": {
-        "executeAs": "USER_ACCESSING",
+        "executeAs": "USER_DEPLOYING",
         "access": "DOMAIN"
     }
 }, indent=2)
