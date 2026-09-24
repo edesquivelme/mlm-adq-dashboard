@@ -1,6 +1,6 @@
 # Comms_OC Monthly Summary — Puente Comms × KPIs
 ## Para uso exclusivo de OPTIMIZADOR-OC_skill.md y analizar-OC_Comms_skill.md
-## Actualizado: 2026-09-23 09:13 | Cobertura: 202609 → 202609
+## Actualizado: 2026-09-24 10:47 | Cobertura: 202609 → 202609
 
 > **INSTRUCCIÓN PARA EL SKILL**: Leer este archivo SIEMPRE junto con
 > `analizar-Optimizar_Performance_KPIs_context.md`.
@@ -280,7 +280,7 @@
   1. ⚪ neutra **SIN ASIGNAR**
      USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
      Fecha:  (?, S?) | App: — | Canal: nan
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: INDIVIDUALS
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: OTHERS
      Título: (sin título)
 
 
