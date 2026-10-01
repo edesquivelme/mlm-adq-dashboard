@@ -65,6 +65,7 @@ from processors        import (
     process_installs_monthly,  # §88: installs FM + Corp
     fmt_month,
     get_descendants,
+    bq_rows,
 )
 from builders          import (
     build_mom_bar, build_mom_table_html,
@@ -106,7 +107,7 @@ def check_source_lag(client):
       (SELECT MAX(TIM_DAY) FROM `meli-bi-data.SBOX_MARKETING.BT_MP_INDIVIDUALS_PERFORMANCE`
          WHERE SIT_SITE_ID = 'MLM' AND TIM_DAY >= DATE '2025-01-01')     AS indiv_max
     """
-    row = list(client.query(sql).result())[0]
+    row = bq_rows(client, sql)[0]
     managed_max = min(row.torre_max, row.indiv_max)
     result = {'inapp_max': row.inapp_max, 'torre_max': row.torre_max,
               'indiv_max': row.indiv_max, 'managed_max': managed_max}
@@ -181,9 +182,9 @@ def check_installs_freshness(client, managed_max):
     WHERE sit_site_id = 'MLM'
       AND fecha_mes  >= '202501'
     """
-    row = list(client.query(sql).result())[0]
+    row = bq_rows(client, sql)[0]
 
-    dias_inv   = managed_max.day        # días de inversión cargados en mes_ref
+    dias_inv   = managed_max.day       # días de inversión cargados en mes_ref
     dias_inst  = row.dias_installs      # días de installs  cargados en mes_ref
     distorsion = (dias_inv / dias_inst - 1) if dias_inst else None
 

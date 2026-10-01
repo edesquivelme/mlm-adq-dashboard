@@ -52,18 +52,32 @@ def prior_months_list(yyyymm, n=2):
 
 # ── Helper BigQuery ───────────────────────────────────────────
 
-def bq_query(client, sql, retries=3, wait=120):
-    """Ejecuta SQL en BQ con reintentos por cuota."""
+def _is_bq_quota_error(e):
+    # Solo cuota/rate-limit son transitorios; un 403 de permisos no se arregla esperando.
+    msg = str(e).lower()
+    return 'quotaexceeded' in msg or 'quota exceeded' in msg or 'ratelimitexceeded' in msg
+
+
+def bq_retry(fn, retries=3, wait=120):
+    """Ejecuta fn() reintentando solo errores de cuota BQ; agotados, relanza el error original."""
     for attempt in range(1, retries + 1):
         try:
-            return client.query(sql).to_dataframe()
+            return fn()
         except Exception as e:
-            if 'quotaExceeded' in str(e).lower() or '403' in str(e):
-                print(f"  Quota BQ excedida. Reintento {attempt}/{retries} en {wait}s...")
-                time.sleep(wait)
-            else:
+            if not _is_bq_quota_error(e) or attempt == retries:
                 raise
-    raise Exception("BQ Retries exhausted")
+            print(f"  Quota BQ excedida (intento {attempt}/{retries}). Reintentando en {wait}s...")
+            time.sleep(wait)
+
+
+def bq_query(client, sql, retries=3, wait=120):
+    """Ejecuta SQL en BQ con reintentos por cuota. Devuelve DataFrame."""
+    return bq_retry(lambda: client.query(sql).to_dataframe(), retries, wait)
+
+
+def bq_rows(client, sql, retries=3, wait=120):
+    """Como bq_query pero devuelve filas Row con tipos nativos (date, int)."""
+    return bq_retry(lambda: list(client.query(sql).result()), retries, wait)
 
 
 # ── Helpers de jerarquía ──────────────────────────────────────
@@ -98,7 +112,7 @@ def process_new_rec_monthly(bq_client):
     from queries import get_new_rec_monthly_sql
     sql = get_new_rec_monthly_sql()
     try:
-        df = bq_client.query(sql).result(timeout=300).to_dataframe()
+        df = bq_retry(lambda: bq_client.query(sql).result(timeout=300).to_dataframe())
     except Exception as e:
         print(f"  WARN process_new_rec_monthly BQ error: {e} — retornando vacío")
         return {}
