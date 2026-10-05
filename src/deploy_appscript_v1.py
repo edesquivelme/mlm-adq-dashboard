@@ -180,10 +180,17 @@ def check_version_count(service, script_id):
     """Retorna el número de versiones actuales y el número de la más reciente.
     La Apps Script API v1 NO permite borrar versiones via API — solo desde la UI.
     Cuando se acerque al límite se imprime una advertencia accionable.
+    La lista viene paginada (máx. 50 por página): sin recorrer nextPageToken el
+    conteo se topa en 50 y la guardia de 180/199 nunca dispara.
     """
     try:
-        resp     = service.projects().versions().list(scriptId=script_id).execute()
-        versions = resp.get('versions', [])
+        versions = []
+        versions_api = service.projects().versions()
+        request = versions_api.list(scriptId=script_id)
+        while request is not None:
+            resp = request.execute()
+            versions += resp.get('versions', [])
+            request = versions_api.list_next(request, resp)
         count    = len(versions)
         latest   = max((v['versionNumber'] for v in versions), default=None)
     except Exception as e:
