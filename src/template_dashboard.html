@@ -973,20 +973,20 @@ function updateAnnotInstallsMensual(canal) {
 }
 
 function updateCPIInstallsMensual(canal) {
-  // CPI = Inversión Total / Installs Totales
+  // CPI = Inversión / Installs del nodo seleccionado — misma regla que la tabla Python.
+  // §92: D.installs_inv_total = monthly_inv_total con el mes en curso cortado al último
+  // día de installs (installs suele llegar 1 día detrás de la inversión).
   const gd = document.getElementById('chart-installs-mensual-bar');
   if (!gd || !gd.data) return;
   const cpiIdx = gd.data.findIndex(t => t.name === 'CPI (USD)');
   if (cpiIdx < 0) return;
-  const toHL       = getLeafNRToHL(canal);
+  const node       = canal || 'Total N+R';                 // '' = (Todos)
+  const invKey     = node === 'Total N+R' ? 'Total Inversión' : node;
   const instMonths = D.installs_months || D.months;
   const newY = instMonths.map(m => {
-    let inst = 0, cost = 0;
-    toHL.forEach(leaf => {
-      inst += ((D.monthly_installs[leaf] || {})[m]) || 0;
-      cost += ((D.monthly_cost[leaf]    || {})[m]) || 0;
-    });
-    return inst > 0 ? cost / inst : null;
+    const inst = ((D.monthly_installs[node]        || {})[m]) || 0;
+    const cost = ((D.installs_inv_total[invKey]    || {})[m]) || 0;
+    return inst > 0 && cost > 0 ? cost / inst : null;
   });
   const newCust = newY.map(v => v != null ? '$' + v.toFixed(2) : '—');
   Plotly.restyle('chart-installs-mensual-bar', { y: [newY], customdata: [newCust] }, [cpiIdx]);

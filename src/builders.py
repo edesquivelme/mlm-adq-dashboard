@@ -2586,12 +2586,13 @@ def build_installs_table_html(data):
     """Tabla HTML estática de Installs Mensuales (pestaña Installs Mensual §88).
 
     Filas por canal: Installs | MoM | CPI (solo canales con inversión)
+    CPI usa installs_inv_total (§92): inversión cortada al último día de installs.
     """
     HIERARCHY_NR         = data['HIERARCHY_NR']
     months               = data.get('installs_months', data['months'])
     monthly_installs     = data['monthly_installs']
     monthly_installs_mom = data['monthly_installs_mom']
-    monthly_inv_total    = data.get('monthly_inv_total', {})
+    monthly_inv_total    = data['installs_inv_total']
 
     CLS = {
         'grand': ('background:#1a2744;color:#fff;font-weight:700', 'background:#111d38;color:#9db4d0'),
@@ -2671,7 +2672,7 @@ def build_installs_bar(data):
     HIERARCHY_NR      = data['HIERARCHY_NR']
     months            = data.get('installs_months', data['months'])
     monthly_installs  = data['monthly_installs']
-    monthly_inv_total = data.get('monthly_inv_total', {})
+    monthly_inv_total = data['installs_inv_total']   # §92: cortada al último día de installs
 
     leaf_nodes = sorted(
         [c for c in HIERARCHY_NR if c.get('is_leaf')],
@@ -2700,7 +2701,7 @@ def build_installs_bar(data):
         ))
 
     # Línea CPI (Cost Per Install) = Inversión Total / Installs Totales
-    # Reutiliza monthly_inv_total['Total Inversión'] ya calculado en process_all()
+    # Inversión = installs_inv_total['Total Inversión'] (monthly_inv_total cortada §92)
     cpi_y = []
     for m in months:
         inv   = (monthly_inv_total.get('Total Inversión', {}).get(m) or 0)

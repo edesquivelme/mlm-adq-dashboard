@@ -7110,3 +7110,64 @@ rompe y qué hacer. No bloquea la generación: los datos hasta el último día c
 El caso E reproduce el incidente real y lo clasifica exactamente como lo vivió el usuario:
 KPI cards en cero. Con esta alarma activa se habría detectado **28 días antes** de que Camilo
 lo reportara.
+
+---
+
+## §93 — 6-Oct-2026 — Corte del CPI de Installs al último día de installs + hallazgo fan-out de costo UCR
+
+### Contexto
+
+Desde el 1-Oct `BT_MP_INDIVIDUALS_PERFORMANCE` empezó a llegar a **D-1** (antes D-2, ver memoria
+§90). Installs (`LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE`) siguió en **D-2**. Resultado: la inversión
+(`managed_max`) quedó 1 día delante de los installs y la alarma §92 disparó 🚨 *CPI inflado ~25%*
+el 6-Oct (installs a 10-04, inversión a 10-05 → 5 días / 4 días). Ninguna fuente estaba mal: era
+el desfase normal amplificado por el arranque de mes (+25% día 5, +11% día 10, ~+5% día 20).
+Decisión de Edgar: **cortar la inversión del CPI en el mismo día que los installs** en lugar de
+aceptar el ruido mensual.
+
+### Cambios
+
+| Archivo | Cambio |
+|---|---|
+| `src/queries.py` | `get_costos_tc_sql(HIERARCHY_NR, max_date=None)`: con `max_date` lee solo el mes de esa fecha hasta ese día (reemplaza el D-1 fijo en los 4 CTEs). Sin `max_date` el SQL es idéntico al anterior. |
+| `src/processors.py` | Helper `_cost_node_slice()` (regla hoja / Total / agregado sin `no_cost`, antes inline en `process_all`). Nueva `process_installs_capped_inv()`: si `installs_max < managed_max`, recalcula el mes de `installs_max` con la inversión cortada; si no, devuelve `monthly_inv_total` sin consultar BQ. |
+| `src/gen_dashboard_v1.py` | `assemble()` inyecta `data['installs_inv_total']` (+ `data_js`). §92: eliminadas las ramas ⚠️/🚨 de distorsión y las constantes `_INSTALLS_DISTORSION_WARN/CRIT` y `_INSTALLS_MIN_DIAS_EVAL`; ahora una línea ℹ️ informa el corte. Se conservan 🚨 SIN DATOS y 🚨 FUENTE CONGELADA. |
+| `src/builders.py` | `build_installs_table_html` y `build_installs_bar` usan `installs_inv_total`. |
+| `src/template_dashboard.html` | `updateCPIInstallsMensual()` lee `D.installs_inv_total[nodo]` (`Total N+R` → `Total Inversión`) en vez de sumar `D.monthly_cost` por hoja. |
+
+**Alcance:** solo el CPI de Installs. CPA, Performance y el resto siguen con `monthly_inv_total`
+(N+R e inversión ya llegan al mismo corte). La pestaña §89 (Install→Activation) no se tocó: su
+CPI usa el último mes cerrado.
+
+### Validación (6-Oct, generación local)
+
+- Solo cambia 202610 (9 nodos con inversión); Ago/Sep idénticos.
+- Total inversión Oct: **$1,040,604 cortada a 10-04** vs $1,240,440 sin corte.
+- CPI Total Oct **$3.47** (sin corte $4.14). POM ADQ $1.42 vs Sep $1.43 → comparable.
+- Log §92: `ℹ️ ... CPI con inversión cortada a 2026-10-04 (sin el corte saldría +25%). Sin acción.`
+
+### Bug latente corregido de paso — línea CPI de la gráfica de Installs
+
+El JS anterior recalculaba la línea CPI con `D.monthly_cost` (costo del query de N+R), no con
+`monthly_inv_total` como la tabla Python. Por el fan-out descrito abajo, la línea mostraba un CPI
+Total de **$17–27** (real $2.2–2.8) y UCR Gest ~$260–360 (real ~$4). Ahora tabla, gráfica y JS
+usan la misma fuente.
+
+### ⚠️ Hallazgo PENDIENTE — fan-out del costo UCR Gest en `get_nr_tc_sql()` (§90)
+
+`ucr_campaigns_tc` hace `LEFT JOIN` de las filas de `BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR` (decenas
+por `SENT_DATE`) contra un subquery de Torre Daily con **1 fila por día**, y luego
+`SUM(t.ucr_cost)` → el costo diario se multiplica por el número de campañas del día.
+
+| Mes | `monthly_cost` UCR Gest (N+R query) | `monthly_inv_total` UCR Gest (Costos) |
+|---|---|---|
+| Jul-26 | $38.4M | $0.50M |
+| Ago-26 | $33.5M | $0.51M |
+| Sep-26 | $34.9M | $0.52M |
+
+N+R **no** está afectado (suma columnas de `c`). Afecta todo lo que lee `monthly_cost` /
+`daily_cost`: línea CPA de NR Mensual (`build_mom_bar`, `updateCPANRMensual`) y CPA de NR Diario /
+NR Diario Acumulado. Introducido en §90 (6-Ago-2026). Fix candidato: `ANY_VALUE(t.ucr_cost)` en
+vez de `SUM`, validando que no se pierdan días con costo y sin campañas. Además `monthly_cost`
+incluye L&P (~$0.4–1.1M/mes) que `hierarchy_cost` marca `no_cost` — diferencia de definición a
+decidir junto con el fix.

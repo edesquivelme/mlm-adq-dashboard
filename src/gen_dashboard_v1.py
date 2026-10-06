@@ -63,6 +63,7 @@ from processors        import (
     process_nr_corp_daily,
     process_comms_oc,          # Two-Tier: carga cache JSON + query BQ semana actual (History.md §45)
     process_installs_monthly,  # §88: installs FM + Corp
+    process_installs_capped_inv,  # §92: inversión del CPI cortada al día de installs
     fmt_month,
     get_descendants,
     bq_rows,
@@ -127,16 +128,22 @@ def check_source_lag(client):
     return result
 
 
-# Fuente SSOT de Installs (§92) y umbrales de la alarma de frescura.
+# Fuente SSOT de Installs (§92) y umbral de la alarma de frescura.
 _INSTALLS_TABLE           = "meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE"
-_INSTALLS_DISTORSION_WARN = 0.05   # +5%  de inflación implícita en CPI → WARNING
-_INSTALLS_DISTORSION_CRIT = 0.15   # +15% de inflación implícita en CPI → CRÍTICO
 _INSTALLS_FROZEN_DAYS     = 10     # días sin carga vs D-1 → congelamiento (red de seguridad)
-_INSTALLS_MIN_DIAS_EVAL   = 5      # mínimo de días de inversión para juzgar la distorsión
 
 
 def check_installs_freshness(client, managed_max):
-    """ALARMA §92 — Frescura de Installs, medida por DISTORSIÓN DE CPI.
+    """ALARMA §92 — Frescura de Installs y corte del CPI.
+
+    **Actualización 2026-10-06 — corte del CPI:** desde que Individuals Perf llega a
+    D-1, Installs (que sigue en D-2) queda 1 día detrás de la inversión y el CPI del
+    mes salía inflado (+25% el día 5). Ya no se alarma por eso:
+    process_installs_capped_inv() corta la inversión del CPI en `max_dia` de Installs,
+    así que el CPI sale correcto con cualquier desfase. Esta función solo informa el
+    corte y conserva las dos alarmas reales: SIN DATOS y FUENTE CONGELADA.
+    El texto de abajo explica por qué la distorsión depende del día del mes (sigue
+    siendo cierto: es lo que el corte neutraliza).
 
     Motivo: la fuente anterior (SBOX_MKTCORPMP.BASE_INSTALLS_LIFECYCLE) se
     congeló el 2026-08-10 y estuvo 30 días sin carga **sin que nadie lo notara**.
@@ -163,9 +170,9 @@ def check_installs_freshness(client, managed_max):
     Se conserva un tope absoluto (_INSTALLS_FROZEN_DAYS) como red de seguridad
     para el caso "la tabla murió", donde el número exacto da igual.
 
-    **No bloquea**: los datos hasta el último día cargado son válidos. A
-    diferencia de la alarma §90 aquí NO hay auto-ajuste posible — si la fuente
-    no carga, no hay de dónde sacar el dato. La acción es humana: escalar a Corp.
+    **No bloquea**: los datos hasta el último día cargado son válidos. El corte
+    del CPI es auto-ajuste, pero si la fuente deja de cargar (SIN DATOS /
+    CONGELADA) no hay de dónde sacar el dato. La acción es humana: escalar a Corp.
 
     Retorna dict con max_dia, max_mes, dias_installs, dias_inversion,
     distorsion_cpi y lag_calendario.
@@ -208,24 +215,12 @@ def check_installs_freshness(client, managed_max):
         print(f"      → Sin auto-ajuste posible: si la fuente no carga, no hay dato.")
         print(f"      → ACCIÓN: escalar a los owners de la tabla (Corp). Ver §92.")
         print("  " + "=" * 62)
-    elif dias_inv < _INSTALLS_MIN_DIAS_EVAL:
-        # Arranque de mes: el cociente días_inv/días_inst es demasiado volátil
-        # para juzgarlo (día 2 vs día 1 = +100%). Se informa, no se alarma.
+    elif row.max_dia < managed_max:
+        # Desfase normal (Installs 1 día detrás de la inversión): el CPI se corta en
+        # max_dia (process_installs_capped_inv) → sale correcto. Solo se informa.
         print(f"  ℹ️  Installs: {row.max_dia} vs inversión {managed_max} — "
-              f"arranque de {mes_ref} ({dias_inst} vs {dias_inv} días), "
-              f"distorsión no evaluable aún")
-    elif distorsion >= _INSTALLS_DISTORSION_CRIT:
-        _encabezado("🚨", f"[ALARMA §92] CPI INFLADO ~{distorsion * 100:.0f}% en {mes_ref}")
-        print(f"      → Installs va {dias_inv - dias_inst} día(s) detrás de la inversión.")
-        print(f"      → CPI y MoM de {mes_ref} NO son confiables.")
-        print(f"      → ACCIÓN: escalar a los owners de la tabla (Corp). Ver §92.")
-        print("  " + "=" * 62)
-    elif distorsion >= _INSTALLS_DISTORSION_WARN:
-        _encabezado("⚠️ ", f"[ALARMA §92] CPI inflado ~{distorsion * 100:.0f}% en {mes_ref}")
-        print(f"      → Installs va {dias_inv - dias_inst} día(s) detrás de la inversión.")
-        print(f"      → Vigilar: si supera {_INSTALLS_DISTORSION_CRIT * 100:.0f}%, "
-              f"tratar como incidente.")
-        print("  " + "=" * 62)
+              f"CPI con inversión cortada a {row.max_dia} (auto-ajuste §92; "
+              f"sin el corte saldría {distorsion * 100:+.0f}%). Sin acción.")
     else:
         print(f"  ✅ Installs alineado con inversión: {row.max_dia} vs {managed_max} "
               f"({dias_inst} vs {dias_inv} día(s) de {mes_ref}) — "
@@ -1089,6 +1084,14 @@ def assemble():
     data['monthly_installs_mom']  = installs_data['monthly_installs_mom']
     data['installs_months']       = installs_data['installs_months']
     data['installs_corp_by_node'] = installs_data['installs_corp_by_node']
+    # §92: CPI = inversión cortada al último día de installs (installs suele ir 1 día atrás)
+    data['installs_inv_total'], _cpi_cap_month = process_installs_capped_inv(
+        client, config, data['monthly_inv_total'],
+        installs_lag['max_dia'], source_lag['managed_max'])
+    if _cpi_cap_month:
+        print(f"  OK CPI {_cpi_cap_month}: inversión cortada a {installs_lag['max_dia']} "
+              f"(Total {data['installs_inv_total']['Total Inversión'][_cpi_cap_month]:,.0f} vs "
+              f"{data['monthly_inv_total']['Total Inversión'][_cpi_cap_month]:,.0f} sin corte)")
 
     # ── 3c. Comunicaciones OC (Two-Tier: cache + BQ semana actual) ───────────
     # Two-Tier:
@@ -1222,6 +1225,7 @@ def assemble():
         'monthly_installs':      data['monthly_installs'],
         'monthly_installs_mom':  data['monthly_installs_mom'],
         'installs_months':       data['installs_months'],
+        'installs_inv_total':    data['installs_inv_total'],   # §92: inversión del CPI cortada
     }
 
     # ── 6. Inyectar en template y escribir output ──────────────

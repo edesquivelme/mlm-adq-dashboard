@@ -849,7 +849,7 @@ def get_vpu_tc_sql(HIERARCHY_NR):
     """
 
 
-def get_costos_tc_sql(HIERARCHY_NR):
+def get_costos_tc_sql(HIERARCHY_NR, max_date=None):
     """SQL inversión mensual por canal desde la Torre de Control (TC).
 
     Reemplaza: get_costos_sql(HIERARCHY_C) — ahora recibe HIERARCHY_NR (tiene tc_mapping).
@@ -860,8 +860,19 @@ def get_costos_tc_sql(HIERARCHY_NR):
     OC:   INV_CANAL=CONSUMIDO_USD  INV_INCENTIVO=COSTO_ENVIO_USD+COSTO_MANTIKA_USD
     Paid: INV_CANAL=COST_USD       INV_INCENTIVO=COST_LC_INCENTIVOS*USD_RATIO
     ORG:  todo 0 (sin inversión gestionada)
+
+    max_date (datetime.date, opcional — §92): en lugar del corte D-1, lee SOLO el mes
+    de max_date hasta ese día inclusive. Lo usa el CPI de Installs para cortar la
+    inversión en el mismo día que las instalaciones. Sin max_date: comportamiento
+    histórico (desde 2025-01-01 hasta D-1).
     """
     p = _tc_channel_parts(HIERARCHY_NR)
+    if max_date:
+        _desde = f"DATE '{max_date.replace(day=1).isoformat()}'"
+        _hasta = f"DATE '{max_date.isoformat()}'"
+    else:
+        _desde = "DATE '2025-01-01'"
+        _hasta = "DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)"
 
     # pom_flag_cost_tc: Inversión POM Others vía POM_FLAG (§78)
     pom_flag_cost_cte   = ""
@@ -881,8 +892,8 @@ def get_costos_tc_sql(HIERARCHY_NR):
         0                                AS INV_MANTIKA
       FROM `meli-bi-data.SBOX_MARKETING.BT_MP_INDIVIDUALS_PERFORMANCE` I
       WHERE I.SIT_SITE_ID  = 'MLM'
-        AND I.TIM_DAY       >= DATE '2025-01-01'
-        AND I.TIM_DAY        <= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        AND I.TIM_DAY       >= {_desde}
+        AND I.TIM_DAY        <= {_hasta}
         AND I.CHANNEL_GROUP != 'OC'
         AND UPPER(I.POM_FLAG) IN ('POM ACTIVATION', 'POM ACQUISITION', 'POM OTHERS')
       GROUP BY MONTH_ID
@@ -908,8 +919,8 @@ def get_costos_tc_sql(HIERARCHY_NR):
         0                                         AS INV_MANTIKA
       FROM `meli-bi-data.SBOX_MARKETING.BT_MP_INDIVIDUALS_PERFORMANCE` I
       WHERE I.SIT_SITE_ID              = 'MLM'
-        AND I.TIM_DAY                   >= DATE '2025-01-01'
-        AND I.TIM_DAY                    <= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        AND I.TIM_DAY                   >= {_desde}
+        AND I.TIM_DAY                    <= {_hasta}
         AND UPPER(I.CHANNEL_GROUP)      != 'OC'
         AND NOT (I.STRATEGY_GROUP IN ('PANDORA', 'OC'))
         AND UPPER(I.NETWORK_GROUP_NAME) != 'NOT NETWORK APPE'
@@ -946,8 +957,8 @@ def get_costos_tc_sql(HIERARCHY_NR):
         SUM(COALESCE(COSTO_MANTIKA_USD,  0))   AS INV_MANTIKA
       FROM `meli-bi-data.SBOX_EG_MKT.BT_OC_NR_REPORTE_TORRE_DAILY`
       WHERE SITE   = 'MLM'
-        AND DAY_ID >= DATE '2025-01-01'
-        AND DAY_ID <= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        AND DAY_ID >= {_desde}
+        AND DAY_ID <= {_hasta}
       GROUP BY MONTH_ID, CANAL
     ),
 
@@ -971,8 +982,8 @@ def get_costos_tc_sql(HIERARCHY_NR):
         ON  I.SIT_SITE_ID = D.SIT_SITE_ID
         AND I.TIM_DAY     = D.TIM_DAY
       WHERE I.SIT_SITE_ID  = 'MLM'
-        AND I.TIM_DAY       >= DATE '2025-01-01'
-        AND I.TIM_DAY        <= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+        AND I.TIM_DAY       >= {_desde}
+        AND I.TIM_DAY        <= {_hasta}
         AND I.CHANNEL_GROUP != 'OC'
         AND (
           {p['paid_where']}

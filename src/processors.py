@@ -288,6 +288,22 @@ def process_nr_corp_daily(config, bq_client, all_nr_months):
 
 # ── Función principal ─────────────────────────────────────────
 
+def _cost_node_slice(df_cm, c, HIERARCHY_C):
+    """Filas de df_cm (un mes de get_costos_tc_sql) que suman al nodo c de hierarchy_cost.
+
+    Hoja con cost_mapping → su propio CANAL. 'Total Inversión' → todo. Agregado →
+    descendientes que NO son no_cost. Compartido por process_all() y
+    process_installs_capped_inv() para que ambas inversiones salgan con la misma regla.
+    """
+    if c.get('is_leaf') and 'cost_mapping' in c:
+        return df_cm[df_cm['CANAL'] == c['label']]
+    if c['label'] == 'Total Inversión':
+        return df_cm
+    desc       = get_cost_descendants(c['id'], HIERARCHY_C)
+    valid_desc = [d for d in desc if not next(x for x in HIERARCHY_C if x['label'] == d).get('no_cost')]
+    return df_cm[df_cm['CANAL'].isin(valid_desc)]
+
+
 def process_all(config, client, n_prior=2):
     """Ejecuta todas las queries BQ y procesamiento.
     Devuelve dict 'data' con todos los datos listos para builders.py y data_js.
@@ -441,14 +457,7 @@ def process_all(config, client, n_prior=2):
                 monthly_inv_total[lbl][m]     = None
                 monthly_inv_mantika[lbl][m]   = None
                 continue
-            if c.get('is_leaf') and 'cost_mapping' in c:
-                slice_df = df_cm[df_cm['CANAL'] == lbl]
-            elif lbl == 'Total Inversión':
-                slice_df = df_cm
-            else:
-                desc       = get_cost_descendants(c['id'], HIERARCHY_C)
-                valid_desc = [d for d in desc if not next(x for x in HIERARCHY_C if x['label'] == d).get('no_cost')]
-                slice_df   = df_cm[df_cm['CANAL'].isin(valid_desc)]
+            slice_df = _cost_node_slice(df_cm, c, HIERARCHY_C)
             monthly_inv_canal[lbl][m]     = round(float(slice_df['INV_CANAL'].sum()), 0)
             monthly_inv_incentivo[lbl][m] = round(float(slice_df['INV_INCENTIVO'].sum()), 0)
             monthly_inv_total[lbl][m]     = round(float(slice_df['INV_TOTAL'].sum()), 0)
@@ -906,3 +915,41 @@ def process_installs_monthly(bq_client, config):
         'installs_months':       installs_months,
         'installs_corp_by_node': installs_corp_by_node,
     }
+
+
+def process_installs_capped_inv(bq_client, config, monthly_inv_total, installs_max, managed_max):
+    """Inversión para el CPI de Installs, cortada al último día de installs (§92).
+
+    CPI = inversión / installs. Installs (LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE) suele
+    llegar 1 día detrás de la inversión (Torre Daily + Individuals Perf): con el mes
+    recién empezado eso infla el CPI ~25% (día 5) aunque ninguna fuente esté mal.
+    Aquí el mes de `installs_max` se recalcula con inversión hasta `installs_max`
+    inclusive — mismo SQL (get_costos_tc_sql) y misma regla por nodo
+    (_cost_node_slice) que monthly_inv_total, así que es comparable 1:1.
+
+    Si installs_max ≥ managed_max no hay nada que cortar: devuelve monthly_inv_total
+    sin consultar BQ. Los meses posteriores al de installs_max quedan con su inversión
+    completa, pero sin installs → la tabla/gráfica ya muestran CPI '—' ahí.
+
+    SOLO para CPI. CPA, Performance y el resto del dashboard siguen con
+    monthly_inv_total (N+R e inversión llegan al mismo corte, no necesitan esto).
+
+    Retorna (installs_inv_total {cost_label: {yyyymm: float}}, cap_month o None).
+    """
+    if installs_max is None or installs_max >= managed_max:
+        return monthly_inv_total, None
+
+    HIERARCHY_C = config['hierarchy_cost']
+    cap_month   = installs_max.strftime('%Y%m')
+    df_cap = bq_query(bq_client, get_costos_tc_sql(config['hierarchy_nr'], max_date=installs_max))
+    df_cap['INV_TOTAL'] = df_cap['INV_TOTAL'].fillna(0).astype(float)
+
+    installs_inv_total = {lbl: dict(by_m) for lbl, by_m in monthly_inv_total.items()}
+    for c in HIERARCHY_C:
+        lbl = c['label']
+        if c.get('no_cost'):
+            installs_inv_total.setdefault(lbl, {})[cap_month] = None
+            continue
+        slice_df = _cost_node_slice(df_cap, c, HIERARCHY_C)
+        installs_inv_total.setdefault(lbl, {})[cap_month] = round(float(slice_df['INV_TOTAL'].sum()), 0)
+    return installs_inv_total, cap_month
