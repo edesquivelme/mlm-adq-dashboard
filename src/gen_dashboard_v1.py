@@ -442,6 +442,12 @@ def build_perf_corp_data(config, data):
             actual_inv_mantika_this_month   = (monthly_inv_mantika_by_hier_cost_label.get(cost_inv_label, {}).get(month)
                                                if cost_inv_label else None)
 
+            # §95: inversión comparable contra Plan — el Total sin los canales sin Plan (L&P ACT)
+            actual_inv_vs_plan_this_month = actual_inv_total_this_month
+            if cost_inv_label == 'Total Inversión' and actual_inv_total_this_month is not None:
+                actual_inv_vs_plan_this_month = (actual_inv_total_this_month
+                                                 - data['monthly_inv_sin_plan'].get(month, 0))
+
             # Plan Inversión (de load_plan() via plan_row_inv en hierarchy_nr)
             plan_inv_value_this_month   = (plan_inv_by_hier_nr_label.get(plan_inv_label, {}).get(month)
                                            if plan_inv_label else None)
@@ -463,6 +469,7 @@ def build_perf_corp_data(config, data):
                 'actual_inv_canal':     actual_inv_canal_this_month,
                 'actual_inv_incentivo': actual_inv_incentivo_this_month,
                 'actual_inv_mantika':   actual_inv_mantika_this_month,
+                'actual_inv_vs_plan':   actual_inv_vs_plan_this_month,   # §95: solo para vs Plan
                 'plan_inv_for_node':   plan_inv_value_this_month,
                 'plan_valor_for_node': plan_valor_value_this_month,
                 'plan_nr_for_node':    plan_nr_value_this_month,

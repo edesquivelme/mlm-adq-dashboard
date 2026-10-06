@@ -7213,3 +7213,45 @@ cuando campaigns tiene lag.
 `Total Inversión` de Performance sí lo incluye, así que quitarlo solo de las líneas descuadraba el
 CPA de NR Mensual ($3.99) contra el CPA Blend ($4.97). Decisión de Edgar: L&P se queda como estaba;
 la distorsión contra Plan se resuelve aparte en §95.
+
+---
+
+## §95 — 6-Oct-2026 — Comparación del Total contra Plan sin L&P ACT
+
+### Problema
+
+`Total Inversión` (raíz de `hierarchy_cost`) suma **todas** las filas de `get_costos_tc_sql()`
+(`_cost_node_slice` → `df_cm` completo), incluida **L&P ACT** (~$0.4–1.1M/mes de `COST_USD`),
+aunque L&P está marcado `no_cost` y su fila en Performance sale en "—". El Plan no trae inversión
+de L&P (ni fila propia ni dentro del total). Resultado: las filas "vs Plan" del Total comparaban
+inversión con L&P contra un Plan sin L&P. En Sep-26, de los ~$2.2M de sobregasto vs Plan,
+**$1.13M eran L&P**.
+
+### Decisión (Edgar)
+
+L&P **se queda** en el Total Inversión, el CPA Blend y las líneas de CPA (lo que ya mostraba el
+dashboard). Solo las comparaciones contra Plan del Total la excluyen.
+
+### Cambios
+
+| Archivo | Cambio |
+|---|---|
+| `src/processors.py` | `process_all()` calcula `monthly_inv_sin_plan` (Σ `INV_TOTAL` de canales `no_cost`, por mes) e `inv_sin_plan_labels` (los que traen inversión: hoy `['L&P ACT']`). |
+| `src/gen_dashboard_v1.py` | `build_perf_corp_data()`: nuevo campo `actual_inv_vs_plan` = `actual_inv_total − monthly_inv_sin_plan` solo cuando `cost_inv_label == 'Total Inversión'` (`corp_total`); igual a `actual_inv_total` en el resto. |
+| `src/builders.py` | Performance_vista_FM (fila `Total N+R`) y Performance_vista_Corp (`corp_total`): "↳ vs Plan Inv." y "↳ vs Plan CPA" usan la inversión sin L&P. Etiqueta `(sin L&P ACT)` con tooltip; sale solo si la resta es ≠ 0 y el nombre se deriva de los datos. |
+
+Sin cambio: Inv. Total, desglose, Plan Inv., Plan CPA, CPA Blend, CPA Paid, gráficas (línea Plan
+Inv.), Installs, Reporting y todos los demás canales.
+
+### Validación (diff fila por fila del HTML)
+
+2,495 filas `<tr>`; **cambian solo 4** (las 2 de FM y las 2 de Corp):
+
+| Fila (Total) | Sep-26 antes | Sep-26 después |
+|---|---|---|
+| vs Plan Inv. | ▲ 63.7% | **▲ 31.4%** |
+| vs Plan CPA | ▲ 54.3% | **▲ 23.9%** |
+
+Comprobación manual Sep: ($5,745,722 − $1,133,375 − $3,508,998) / $3,508,998 = +31.4% ✓.
+Oct sale ▼78.7% porque compara el mes en curso (5 días) contra el Plan del mes completo — mismo
+comportamiento de siempre.

@@ -473,6 +473,18 @@ def process_all(config, client, n_prior=2):
                 if prev and prev != 0 and curr is not None:
                     monthly_inv_mom[lbl][m] = round((curr - prev) / prev, 4)
 
+    # §95: inversión SIN PLAN — canales no_cost que igual traen INV_TOTAL (hoy solo L&P ACT,
+    # ~$0.4-1.1M/mes). 'Total Inversión' la incluye (su slice es todo df_cm) pero el Plan no
+    # la trae. Solo se resta en las filas "vs Plan Inv." / "vs Plan CPA" del Total para comparar
+    # peras con peras; el Total, el CPA Blend y lo demás la siguen incluyendo.
+    _no_cost_labels      = [c['label'] for c in HIERARCHY_C if c.get('no_cost')]
+    monthly_inv_sin_plan = {}
+    for m in cost_months:
+        df_cm = df_cost[(df_cost['MONTH_ID'] == m) & (df_cost['CANAL'].isin(_no_cost_labels))]
+        monthly_inv_sin_plan[m] = round(float(df_cm['INV_TOTAL'].sum()), 0)
+    inv_sin_plan_labels = sorted(
+        df_cost[df_cost['CANAL'].isin(_no_cost_labels) & (df_cost['INV_TOTAL'] != 0)]['CANAL'].unique().tolist())
+
     # CPA Total & Paid: cruce N+R (HIERARCHY_NR) × Inversión (HIERARCHY_C)
     # COST_CHANNELS_NR: canales leaf con cost_mapping (tienen inversión real)
     COST_CHANNELS_NR  = [c['label'] for c in HIERARCHY_C if c.get('is_leaf') and 'cost_mapping' in c]
@@ -596,6 +608,7 @@ def process_all(config, client, n_prior=2):
         monthly_inv_canal=monthly_inv_canal, monthly_inv_incentivo=monthly_inv_incentivo,
         monthly_inv_total=monthly_inv_total, monthly_inv_mantika=monthly_inv_mantika,
         monthly_inv_mom=monthly_inv_mom,
+        monthly_inv_sin_plan=monthly_inv_sin_plan, inv_sin_plan_labels=inv_sin_plan_labels,  # §95
         monthly_nr_paid=monthly_nr_paid, monthly_cpa_total=monthly_cpa_total, monthly_cpa_paid=monthly_cpa_paid,
         # Performance (cruce de ambas fuentes)
         perf_nr_paid=perf_nr_paid, perf_nr_go=perf_nr_go, perf_vpu_prod=perf_vpu_prod,

@@ -1011,6 +1011,15 @@ def build_perf_corp_table_html(data):
             rows += f'<td style="{hl_s}" data-month="{m}">{fmt_mom_perf_corp(cur_inv or 0, prev_inv)}</td>'
         rows += '</tr>'
 
+        # §95: vs Plan usa actual_inv_vs_plan (= Total sin canales sin Plan en corp_total;
+        # igual a actual_inv_total en los demás nodos). Sufijo visible solo si resta algo.
+        vs_plan_sfx = ''
+        if any(get_month_data(m).get('actual_inv_vs_plan') != get_month_data(m).get('actual_inv_total')
+               for m in months):
+            _excl = ', '.join(data.get('inv_sin_plan_labels', []))
+            vs_plan_sfx = (f' <span title="Excluye la inversión de {_excl}: entra al Total pero '
+                           f'no tiene Plan">(sin {_excl})</span>')
+
         # ── Filas 8-9: Plan Inv. + vs Plan Inv. ──────────────────────────────
         any_has_plan_inv = any(get_month_data(m).get('plan_inv_for_node') for m in months)
         if any_has_plan_inv:
@@ -1021,9 +1030,9 @@ def build_perf_corp_table_html(data):
                 rows += f'<td style="{pl_s}" data-month="{m}">{fmt_usd_perf_corp(pv)}</td>'
             rows += '</tr>'
             rows += f'<tr{parent_attr}{hidden_attr}>'
-            rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{vs_s};font-style:italic">↳ vs Plan Inv.</td>'
+            rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{vs_s};font-style:italic">↳ vs Plan Inv.{vs_plan_sfx}</td>'
             for m in months:
-                act_inv  = get_month_data(m).get('actual_inv_total')
+                act_inv  = get_month_data(m).get('actual_inv_vs_plan')
                 plan_inv = get_month_data(m).get('plan_inv_for_node')
                 rows += f'<td style="{vs_s}" data-month="{m}">{fmt_pct_perf_corp(act_inv or 0, plan_inv, False)}</td>'
             rows += '</tr>'
@@ -1068,10 +1077,10 @@ def build_perf_corp_table_html(data):
                 rows += f'<td style="{pl_s}" data-month="{m}">{fmt_cpa_perf_corp(plan_cpa)}</td>'
             rows += '</tr>'
             rows += f'<tr{parent_attr}{hidden_attr}>'
-            rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{vs_s};font-style:italic">↳ vs Plan CPA</td>'
+            rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{vs_s};font-style:italic">↳ vs Plan CPA{vs_plan_sfx}</td>'
             for m in months:
                 md       = get_month_data(m)
-                inv      = md.get('actual_inv_total') or 0
+                inv      = md.get('actual_inv_vs_plan') or 0
                 nr       = md.get('actual_nr_total', 0) or monthly_nr_corp_by_node.get(node_id, {}).get(m, 0)
                 pi       = md.get('plan_inv_for_node') or 0
                 pn       = md.get('plan_nr_for_node')  or 0
@@ -1332,6 +1341,7 @@ def build_perf_table_html(data):
     plan_nr             = data.get('plan_nr',    {})
     plan_valor          = data.get('plan_valor', {})
     plan_inv            = data.get('plan_inv',   {})
+    inv_sin_plan        = data.get('monthly_inv_sin_plan', {})   # §95: L&P ACT — sin Plan
 
     def fmt_pct_plan(actual, plan):
         """Formatea variación vs plan como porcentaje con flecha de color."""
@@ -1461,16 +1471,24 @@ def build_perf_table_html(data):
         # (Total N+R, OC+UCR, OC ACT, POM TOTAL, MGM TOTAL — ver plan_row_inv en channels_config.json)
         plan_inv_by_month = plan_inv.get(label, {})  # {} si el canal no tiene plan de inversión
         plan_row_style    = f'{PL_LBL_BASE};border-left:3px solid {border}'
+        # §95: vs Plan del Total sin la inversión de canales sin Plan (L&P ACT). La fila
+        # Inv. Total y el CPA Blend la siguen incluyendo; solo cambian las filas "vs Plan".
+        inv_vs_plan_map, vs_plan_sfx = inv_map, ''
+        if label == 'Total N+R' and any(inv_sin_plan.get(m) for m in months):
+            inv_vs_plan_map = {m: (inv_map.get(m) or 0) - (inv_sin_plan.get(m) or 0) for m in inv_map}
+            _excl = ', '.join(data.get('inv_sin_plan_labels', []))
+            vs_plan_sfx = (f' <span title="Excluye la inversión de {_excl}: entra al Total pero '
+                           f'no tiene Plan">(sin {_excl})</span>')
         if any(plan_inv_by_month.get(m) for m in months):
             h += f'<tr data-canal="{label}"><td class="lbl-col" style="{sub_pad};{plan_row_style}">↳ Plan Inv.</td>'
             for m in months:
                 plan_inv_val = plan_inv_by_month.get(m)
                 h += f'<td style="{PL_VAL_BASE}" data-month="{m}">{fmt_usd(plan_inv_val) if plan_inv_val else "—"}</td>'
             h += '</tr>'
-            h += f'<tr data-canal="{label}"><td class="lbl-col" style="{sub_pad};{plan_row_style}">↳ vs Plan Inv.</td>'
+            h += f'<tr data-canal="{label}"><td class="lbl-col" style="{sub_pad};{plan_row_style}">↳ vs Plan Inv.{vs_plan_sfx}</td>'
             for m in months:
                 plan_inv_val   = plan_inv_by_month.get(m)
-                actual_inv_val = inv_map.get(m) or 0
+                actual_inv_val = inv_vs_plan_map.get(m) or 0
                 h += f'<td style="{VS_VAL_BASE}" data-month="{m}">{fmt_pct_plan(actual_inv_val, plan_inv_val)}</td>'
             h += '</tr>'
 
@@ -1494,12 +1512,12 @@ def build_perf_table_html(data):
                 plan_cpa_blend = round(plan_inv_val / plan_nr_val, 2) if plan_inv_val and plan_nr_val > 0 else None
                 h += f'<td style="{PL_VAL_BASE}" data-month="{m}">{fmt_cpa(plan_cpa_blend)}</td>'
             h += '</tr>'
-            h += f'<tr data-canal="{label}"><td class="lbl-col" style="{sub_pad};{plan_row_style}">↳ vs Plan CPA</td>'
+            h += f'<tr data-canal="{label}"><td class="lbl-col" style="{sub_pad};{plan_row_style}">↳ vs Plan CPA{vs_plan_sfx}</td>'
             for m in months:
                 plan_inv_val = plan_inv_by_month.get(m) or 0
                 plan_nr_val  = plan_nr_by_month.get(m)  or 0
                 plan_cpa_blend = round(plan_inv_val / plan_nr_val, 2) if plan_inv_val and plan_nr_val > 0 else None
-                actual_inv = inv_map.get(m) or 0
+                actual_inv = inv_vs_plan_map.get(m) or 0
                 actual_nr  = monthly_nr[label].get(m, 0) or 0
                 actual_cpa_blend = round(actual_inv / actual_nr, 2) if actual_inv and actual_nr > 0 else None
                 h += f'<td style="{VS_VAL_BASE}" data-month="{m}">{fmt_pct_plan(actual_cpa_blend, plan_cpa_blend) if actual_cpa_blend is not None else "—"}</td>'
