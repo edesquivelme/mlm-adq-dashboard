@@ -7153,7 +7153,7 @@ El JS anterior recalculaba la línea CPI con `D.monthly_cost` (costo del query d
 Total de **$17–27** (real $2.2–2.8) y UCR Gest ~$260–360 (real ~$4). Ahora tabla, gráfica y JS
 usan la misma fuente.
 
-### ⚠️ Hallazgo PENDIENTE — fan-out del costo UCR Gest en `get_nr_tc_sql()` (§90)
+### ✅ Hallazgo (resuelto en §94) — fan-out del costo UCR Gest en `get_nr_tc_sql()` (§90)
 
 `ucr_campaigns_tc` hace `LEFT JOIN` de las filas de `BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR` (decenas
 por `SENT_DATE`) contra un subquery de Torre Daily con **1 fila por día**, y luego
@@ -7171,3 +7171,45 @@ NR Diario Acumulado. Introducido en §90 (6-Ago-2026). Fix candidato: `ANY_VALUE
 vez de `SUM`, validando que no se pierdan días con costo y sin campañas. Además `monthly_cost`
 incluye L&P (~$0.4–1.1M/mes) que `hierarchy_cost` marca `no_cost` — diferencia de definición a
 decidir junto con el fix.
+
+---
+
+## §94 — 6-Oct-2026 — Fix fan-out del costo UCR Gest (líneas de CPA de NR Mensual / NR Diario)
+
+### Problema
+
+Detectado en §93. En `get_nr_tc_sql()`, el CTE `ucr_campaigns_tc` (introducido en §90, 6-Ago-2026)
+une las filas de `BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR` (60–90 por `SENT_DATE`) contra un subquery de
+Torre Daily con **1 fila por día**, y agregaba con `SUM(t.ucr_cost)` → el costo del día se
+multiplicaba por el número de campañas del día.
+
+Efecto en `monthly_cost` / `daily_cost` (lo único que consume `df_nr['COST']`) → líneas de CPA de
+NR Mensual (`build_mom_bar`, `updateCPANRMensual`), NR Diario y NR Diario Acumulado. CPA Total de
+la gráfica NR Mensual: **~$32–41** cuando el real es ~$4–6. N+R, Costos, Performance, Installs y
+Reporting no estaban afectados (usan `monthly_inv_total`).
+
+### Fix
+
+`src/queries.py`: `COALESCE(SUM(t.ucr_cost), 0.0)` → `COALESCE(ANY_VALUE(t.ucr_cost), 0.0)`. Todas
+las filas del grupo traen el mismo `ucr_cost` (1 fila por día en `t`).
+
+Se descartó reestructurar con FULL OUTER JOIN: crearía filas de UCR Gest en días sin campañas
+cargadas, y la existencia de fila es la señal que usa `nr_data_maxday` (§91) para capar el LMTD
+cuando campaigns tiene lag.
+
+### Validación
+
+- BQ previo (22 meses, 2025-01 → 2026-10): **0 días** con costo Torre Daily UCRANIA y sin filas de
+  campañas → `ANY_VALUE` no pierde costo. `SUM(cost × filas)` reproduce al dólar el `monthly_cost`
+  inflado (Sep-26 $34,938,501).
+- Post-fix, `monthly_cost` UCR Gest = `monthly_inv_total` UCR Gest al dólar (Jul $503,073 ·
+  Ago $514,286 · Sep $518,285 · Oct $99,140).
+- Diff completo de `D` vs v74: solo cambian `monthly_cost` y `daily_cost` (+ ruido flotante 3.6e-16
+  en `perf_vpu_prod`). `monthly_nr`, `daily_cum`, `monthly_inv_total` idénticos.
+- Línea CPA Total NR Mensual: Sep $34.76 → **$4.97** · Oct $41.09 → **$6.17** = CPA Blend de
+  Performance exacto.
+
+**L&P:** se evaluó quitar L&P ACT (~$0.4–1.1M/mes) de `monthly_cost`. Se descartó: el
+`Total Inversión` de Performance sí lo incluye, así que quitarlo solo de las líneas descuadraba el
+CPA de NR Mensual ($3.99) contra el CPA Blend ($4.97). Decisión de Edgar: L&P se queda como estaba;
+la distorsión contra Plan se resuelve aparte en §95.

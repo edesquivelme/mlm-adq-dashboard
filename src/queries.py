@@ -264,7 +264,10 @@ def get_nr_tc_sql(HIERARCHY_NR):
           THEN COALESCE(c.NR_ADJUST_FCST, 0)
           ELSE COALESCE(c.NEW_7D_ADJUST,  0) + COALESCE(c.REC_7D_ADJUST, 0)
         END)                                                               AS NR,
-        COALESCE(SUM(t.ucr_cost), 0.0)                                    AS COST
+        -- §94: ANY_VALUE, no SUM. `t` trae 1 fila por día y se une contra decenas de filas
+        -- de campañas por SENT_DATE → SUM multiplicaba el costo del día ~60-90x
+        -- (Sep-26: $34.9M vs $518K real). Todas las filas del grupo traen el mismo valor.
+        COALESCE(ANY_VALUE(t.ucr_cost), 0.0)                              AS COST
       FROM `meli-bi-data.SBOX_EG_MKT.BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR` c
       LEFT JOIN (
         SELECT DAY_ID,
