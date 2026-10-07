@@ -7318,4 +7318,6 @@ sale en D-1 en vez de D-2, y sin fines de semana gasta ~22 versiones de Apps Scr
 lugar de ~30 (techo de 200 hacia ~feb-2027 en vez de ~ene-2027, contando fixes manuales).
 `registrar_tarea.ps1` usa trigger semanal L-V con 10:30 por defecto; `auto_actualizar.ps1`
 agrega la guardia 0 (sábado/domingo no corre — cubre una corrida del viernes perdida que Windows
-dispararía al prender la laptop el sábado). Primera corrida real: miércoles 2026-10-07 10:30.
+dispararía al prender la laptop el sábado). La corrida del 7-Oct 10:30 se saltó a propósito (Edgar:
+ya estaba actualizado con v76) escribiendo `logs/.ultimo_deploy_ok`; primera corrida real:
+**jueves 2026-10-08 10:30**.
