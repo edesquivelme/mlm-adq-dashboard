@@ -59,6 +59,31 @@ def fmt_cpa(v):
     return f'${v:.2f}'
 
 
+# ── §97: ratios del mes en curso al corte común ───────────────
+# Los ratios (CPA, VPU, ROAS, CPI, LFT) usan los gemelos r_* / ri_* de process_all(): en el
+# mes en curso, numerador y denominador cortados al último día completo en todas sus fuentes.
+# Las celdas afectadas llevan † y cada tabla una nota con el día del corte.
+
+def _ratio_cut(data, key='main'):
+    """Fecha del corte de ratios ('main' = CPA/VPU/ROAS, 'inst' = CPI/LFT)."""
+    return data['ratio_cut_main'] if key == 'main' else data['ratio_cut_inst']
+
+
+def _rmark(data, m, key='main'):
+    """'†' si el mes m usa el ratio cortado (mes del corte o posterior), '' si no."""
+    return '<sup title="Ratio al corte común de fuentes (§97)">†</sup>' \
+        if m >= _ratio_cut(data, key).strftime('%Y%m') else ''
+
+
+def _ratio_note(data, key='main', ratios='CPA, VPU y ROAS'):
+    """Nota sobre la tabla: hasta qué día van los ratios del mes en curso y por qué."""
+    cut = _ratio_cut(data, key)
+    return (f'<div style="font-size:11px;color:#6b5a1e;background:#fdf9ec;border-left:3px solid #e0c97a;'
+            f'padding:5px 10px;margin:4px 0 6px">† {ratios} de {fmt_month(cut.strftime("%Y%m"))} '
+            f'calculados al <b>{cut.isoformat()}</b>: último día completo en todas las fuentes '
+            f'(numerador y denominador al mismo día). Conteos e inversión: todo lo cargado.</div>')
+
+
 # ── Tabla NR Mensual (pestaña NR Mensual) ─────────────────────
 
 def build_mom_table_html(data, plan_nr, plan_lines_data):
@@ -638,11 +663,13 @@ def build_perf_corp_bar_chart(data):
         ))
 
     # ── CPA Blend (y2, amarillo) — total_inv / total_nr_corp ─────────────────
+    # §97: líneas de ratio con los gemelos (mes en curso al corte común); barras con originales.
+    r_inv_total, r_nr, r_nr_corp = data['r_inv_total'], data['r_nr'], data['r_nr_corp_by_node']
     cpa_blend_y2 = []
     for m in cost_months:
-        inv = monthly_inv_total.get('Total Inversión', {}).get(m) or 0
-        nr  = (monthly_nr_corp_by_node.get('corp_total', {}).get(m)
-               or monthly_nr.get('Total N+R', {}).get(m) or 0)
+        inv = r_inv_total.get('Total Inversión', {}).get(m) or 0
+        nr  = (r_nr_corp.get('corp_total', {}).get(m)
+               or r_nr.get('Total N+R', {}).get(m) or 0)
         cpa_blend_y2.append(round(inv / nr, 2) if inv and nr > 0 else None)
 
     if any(v is not None for v in cpa_blend_y2):
@@ -658,8 +685,8 @@ def build_perf_corp_bar_chart(data):
     # ── VPU Pred 90D (y2, azul oscuro) ───────────────────────────────────────
     vpu_y2 = []
     for m in cost_months:
-        vpu_p = perf_vpu_prod.get('Total N+R', {}).get(m, 0) or 0
-        nr    = monthly_nr.get('Total N+R', {}).get(m, 0) or 0
+        vpu_p = data['r_vpu_prod'].get('Total N+R', {}).get(m, 0) or 0
+        nr    = r_nr.get('Total N+R', {}).get(m, 0) or 0
         vpu_y2.append(round(vpu_p / nr, 2) if nr > 0 and vpu_p > 0 else None)
 
     if any(v is not None for v in vpu_y2):
@@ -765,6 +792,8 @@ def build_perf_corp_table_html(data):
 
     # Total N+R corp por mes — denominador para Share N+R
     total_nr_corp_by_month     = monthly_nr_corp_by_node.get('corp_total', {})
+    # §97: N+R Corp para RATIOS (mes en curso al corte común) — fallback de nodos sin mapping
+    r_nr_corp_by_node          = data['r_nr_corp_by_node']
 
     # ── Estilos por nivel (idénticos a tabla NR corp) ─────────────────────────
     PERF_CORP_LEVEL_BG      = {'grand': '#f0f4fa', 'sub1': '#ffffff', 'sub2': '#ffffff', 'medio': '#ffffff'}
@@ -893,6 +922,12 @@ def build_perf_corp_table_html(data):
         # Preparar listas por mes para evitar repetición
         def get_month_data(m):
             return node_perf_months.get(m, {}) if node_has_perf else {}
+
+        # §97: inversión y N+R para RATIOS — mes en curso cortado al último día completo
+        def r_inv(m):
+            return get_month_data(m).get('r_inv_total') or 0
+        def r_nr(m):
+            return get_month_data(m).get('r_nr_total', 0) or r_nr_corp_by_node.get(node_id, {}).get(m, 0)
 
         # ── Fila 2: N+R ───────────────────────────────────────────────────────
         rows += f'<tr{parent_attr}{hidden_attr}>'
@@ -1041,11 +1076,10 @@ def build_perf_corp_table_html(data):
         rows += f'<tr{parent_attr}{hidden_attr}>'
         rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{hl_s}">CPA Blend.</td>'
         for m in months:
-            md  = get_month_data(m)
-            inv = md.get('actual_inv_total') or 0
-            nr  = md.get('actual_nr_total',  0) or monthly_nr_corp_by_node.get(node_id, {}).get(m, 0)
+            inv = r_inv(m)
+            nr  = r_nr(m)
             cpa = round(inv / nr, 2) if inv and nr > 0 else None
-            rows += f'<td style="{hl_s}" data-month="{m}">{fmt_cpa_perf_corp(cpa)}</td>'
+            rows += f'<td style="{hl_s}" data-month="{m}">{fmt_cpa_perf_corp(cpa)}{_rmark(data, m) if cpa is not None else ""}</td>'
         rows += '</tr>'
 
         # ── CPA Blend vs MoM ─────────────────────────────────────────────────────
@@ -1053,9 +1087,8 @@ def build_perf_corp_table_html(data):
         rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{hl_s};font-style:italic">↳ vs MoM</td>'
         for i, m in enumerate(months):
             def _cpa(month_key):
-                md_  = get_month_data(month_key)
-                inv_ = md_.get('actual_inv_total') or 0
-                nr_  = md_.get('actual_nr_total', 0) or monthly_nr_corp_by_node.get(node_id, {}).get(month_key, 0)
+                inv_ = r_inv(month_key)
+                nr_  = r_nr(month_key)
                 return round(inv_ / nr_, 2) if inv_ and nr_ > 0 else None
             cur_cpa  = _cpa(m)
             prev_cpa = _cpa(months[i-1]) if i > 0 else None
@@ -1080,8 +1113,8 @@ def build_perf_corp_table_html(data):
             rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{vs_s};font-style:italic">↳ vs Plan CPA{vs_plan_sfx}</td>'
             for m in months:
                 md       = get_month_data(m)
-                inv      = md.get('actual_inv_vs_plan') or 0
-                nr       = md.get('actual_nr_total', 0) or monthly_nr_corp_by_node.get(node_id, {}).get(m, 0)
+                inv      = md.get('r_inv_vs_plan') or 0
+                nr       = r_nr(m)
                 pi       = md.get('plan_inv_for_node') or 0
                 pn       = md.get('plan_nr_for_node')  or 0
                 act_cpa  = round(inv / nr,  2) if inv and nr  > 0 else None
@@ -1094,10 +1127,10 @@ def build_perf_corp_table_html(data):
             rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{sm_s}">↳ CPA Paid</td>'
             for m in months:
                 md   = get_month_data(m)
-                inv  = md.get('actual_inv_total') or 0
-                paid = md.get('actual_nr_paid', 0) or 0
+                inv  = r_inv(m)
+                paid = md.get('r_nr_paid', 0) or 0
                 cpa  = round(inv / paid, 2) if inv and paid > 0 else None
-                rows += f'<td style="{sm_s}" data-month="{m}">{fmt_cpa_perf_corp(cpa)}</td>'
+                rows += f'<td style="{sm_s}" data-month="{m}">{fmt_cpa_perf_corp(cpa)}{_rmark(data, m) if cpa is not None else ""}</td>'
             rows += '</tr>'
 
         # ── Fila 14: VPU Pred 90D (resaltada) ────────────────────────────────
@@ -1106,10 +1139,10 @@ def build_perf_corp_table_html(data):
         rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{hl_s}">VPU Pred 90D</td>'
         for m in months:
             md      = get_month_data(m)
-            vpu_p   = md.get('actual_vpu_prod', 0) or 0
-            nr_tot  = md.get('actual_nr_total', 0) or monthly_nr_corp_by_node.get(node_id, {}).get(m, 0)
+            vpu_p   = md.get('r_vpu_prod', 0) or 0
+            nr_tot  = r_nr(m)
             vpu_per_user = round(vpu_p / nr_tot, 2) if nr_tot > 0 and vpu_p > 0 else None
-            rows += f'<td style="{hl_s}" data-month="{m}">{fmt_vpu_perf_corp(vpu_per_user)}</td>'
+            rows += f'<td style="{hl_s}" data-month="{m}">{fmt_vpu_perf_corp(vpu_per_user)}{_rmark(data, m) if vpu_per_user else ""}</td>'
         rows += '</tr>'
 
         # ── Filas 15-19: Plan VPU, vs Plan VPU, Valor Pred, Plan Valor, vs Plan Valor ─
@@ -1128,8 +1161,8 @@ def build_perf_corp_table_html(data):
             rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{vs_s};font-style:italic">↳ vs Plan VPU</td>'
             for m in months:
                 md       = get_month_data(m)
-                vpu_p    = md.get('actual_vpu_prod', 0) or 0
-                nr_tot   = md.get('actual_nr_total', 0) or monthly_nr_corp_by_node.get(node_id, {}).get(m, 0)
+                vpu_p    = md.get('r_vpu_prod', 0) or 0
+                nr_tot   = r_nr(m)
                 pv_val   = md.get('plan_valor_for_node') or 0
                 pv_nr    = md.get('plan_nr_for_node')    or 0
                 act_vpu  = round(vpu_p  / nr_tot, 2) if nr_tot > 0 and vpu_p > 0 else None
@@ -1178,10 +1211,10 @@ def build_perf_corp_table_html(data):
             rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{roa_lbl_s}">ROAs</td>'
             for m in months:
                 md   = get_month_data(m)
-                roa  = md.get('actual_roa_num', 0) or 0
-                inv  = md.get('actual_inv_total') or 0
+                roa  = md.get('r_roa_num', 0) or 0
+                inv  = r_inv(m)
                 roas = round(roa / inv, 2) if inv > 0 and roa > 0 else None
-                rows += f'<td style="{roa_val_s}" data-month="{m}">{fmt_roas_perf_corp(roas)}</td>'
+                rows += f'<td style="{roa_val_s}" data-month="{m}">{fmt_roas_perf_corp(roas)}{_rmark(data, m) if roas else ""}</td>'
             rows += '</tr>'
 
         # ── ROAs vs MoM ───────────────────────────────────────────────────────────
@@ -1190,9 +1223,8 @@ def build_perf_corp_table_html(data):
             rows += f'<td class="lbl-col" style="padding-left:{sub_pad_px}px;{roa_val_s};font-style:italic">↳ vs MoM</td>'
             for i, m in enumerate(months):
                 def _roas(month_key):
-                    md_  = get_month_data(month_key)
-                    roa_ = md_.get('actual_roa_num', 0) or 0
-                    inv_ = md_.get('actual_inv_total') or 0
+                    roa_ = get_month_data(month_key).get('r_roa_num', 0) or 0
+                    inv_ = r_inv(month_key)
                     return round(roa_ / inv_, 2) if inv_ > 0 and roa_ > 0 else None
                 cur_roas  = _roas(m)
                 prev_roas = _roas(months[i-1]) if i > 0 else None
@@ -1206,7 +1238,7 @@ def build_perf_corp_table_html(data):
         return rows
 
     # ── Construir tabla HTML ──────────────────────────────────────────────────
-    h  = '<div class="table-scroll"><table class="mom-tbl perf-corp-tbl">'
+    h  = _ratio_note(data, 'main') + '<div class="table-scroll"><table class="mom-tbl perf-corp-tbl">'
     h += '<thead><tr><th class="lbl-col">Canal / Métrica</th>'
     for m in months:
         h += f'<th data-month="{m}">{fmt_month(m)}</th>'
@@ -1254,10 +1286,11 @@ def build_mom_bar(data, plan_nr, plan_lines_data):
             marker_color=c['color']
         ))
 
+    # §97: CPA del mes en curso con costo y N+R cortados al mismo día (gemelos r_cost / r_nr)
     cpa_y = []
     for m in months:
-        nr   = monthly_nr['Total N+R'].get(m, 0)
-        cost = monthly_cost['Total N+R'].get(m, 0)
+        nr   = data['r_nr']['Total N+R'].get(m, 0)
+        cost = data['r_cost']['Total N+R'].get(m, 0)
         cpa_y.append(round(cost / nr, 4) if nr > 0 else None)
 
     has_cpr = any(v is not None and v > 0 for v in cpa_y)
@@ -1342,6 +1375,12 @@ def build_perf_table_html(data):
     plan_valor          = data.get('plan_valor', {})
     plan_inv            = data.get('plan_inv',   {})
     inv_sin_plan        = data.get('monthly_inv_sin_plan', {})   # §95: L&P ACT — sin Plan
+    # §97: gemelos para los RATIOS (CPA, VPU, ROAS) — en el mes en curso cortados al último
+    # día completo en todas las fuentes. Las filas de conteo siguen con los originales.
+    r_nr, r_inv_total     = data['r_nr'], data['r_inv_total']
+    r_nr_paid, r_vpu_prod = data['r_nr_paid'], data['r_vpu_prod']
+    r_roa_num             = data['r_roa_num']
+    r_inv_sin_plan        = data['r_inv_sin_plan']
 
     def fmt_pct_plan(actual, plan):
         """Formatea variación vs plan como porcentaje con flecha de color."""
@@ -1371,11 +1410,11 @@ def build_perf_table_html(data):
     PL_VAL_BASE = f'font-size:10px;color:#5a4a10;background:{PL_BG}'
     VS_VAL_BASE = f'font-size:10px;background:{PL_BG}'
 
-    def get_inv(label):
+    def get_inv(label, src=None):
         key = 'Total Inversión' if label == 'Total N+R' else label
-        return monthly_inv_total.get(key, {})
+        return (src if src is not None else monthly_inv_total).get(key, {})
 
-    h  = '<div class="table-scroll"><table class="mom-tbl perf-tbl"><thead><tr>'
+    h  = _ratio_note(data, 'main') + '<div class="table-scroll"><table class="mom-tbl perf-tbl"><thead><tr>'
     h += '<th class="lbl-col">Canal / Métrica</th>'
     for m in months:
         h += f'<th data-month="{m}">{fmt_month(m)}</th>'
@@ -1389,6 +1428,7 @@ def build_perf_table_html(data):
         pad     = f'padding-left:{indent*16+12}px'
         sub_pad = f'padding-left:{(indent+1)*16+12}px'
         inv_map = get_inv(label)
+        r_inv_map = get_inv(label, r_inv_total)   # §97: inversión para ratios
 
         hdr_lbl_s = f'background:{bg};color:{txt};font-weight:{wt};border-left:3px solid {border};font-size:11px'
         nr_lbl_s  = f'background:{bg};color:{txt};font-weight:{wt};border-left:3px solid {border}'
@@ -1474,8 +1514,10 @@ def build_perf_table_html(data):
         # §95: vs Plan del Total sin la inversión de canales sin Plan (L&P ACT). La fila
         # Inv. Total y el CPA Blend la siguen incluyendo; solo cambian las filas "vs Plan".
         inv_vs_plan_map, vs_plan_sfx = inv_map, ''
+        r_inv_vs_plan_map = r_inv_map                       # §97: vs Plan CPA usa el corte
         if label == 'Total N+R' and any(inv_sin_plan.get(m) for m in months):
             inv_vs_plan_map = {m: (inv_map.get(m) or 0) - (inv_sin_plan.get(m) or 0) for m in inv_map}
+            r_inv_vs_plan_map = {m: (r_inv_map.get(m) or 0) - (r_inv_sin_plan.get(m) or 0) for m in r_inv_map}
             _excl = ', '.join(data.get('inv_sin_plan_labels', []))
             vs_plan_sfx = (f' <span title="Excluye la inversión de {_excl}: entra al Total pero '
                            f'no tiene Plan">(sin {_excl})</span>')
@@ -1495,10 +1537,11 @@ def build_perf_table_html(data):
         # ── CPA Blend real (resaltada) — derivado: actual_inv / actual_nr_total ──────────
         h += f'<tr data-canal="{label}"><td class="lbl-col" style="{sub_pad};{HL_LBL};border-left:3px solid {border}">CPA Blend.</td>'
         for m in months:
-            actual_inv = inv_map.get(m) or 0
-            actual_nr  = monthly_nr[label].get(m, 0) or 0
+            actual_inv = r_inv_map.get(m) or 0
+            actual_nr  = r_nr[label].get(m, 0) or 0
             actual_cpa_blend = round(actual_inv / actual_nr, 2) if actual_inv and actual_nr > 0 else None
-            h += f'<td style="{HL_VAL}" data-month="{m}">{fmt_cpa(actual_cpa_blend)}</td>'
+            mk = _rmark(data, m) if actual_cpa_blend is not None else ''
+            h += f'<td style="{HL_VAL}" data-month="{m}">{fmt_cpa(actual_cpa_blend)}{mk}</td>'
         h += '</tr>'
 
         # ── Plan CPA + vs Plan CPA — derivado: plan_inv / plan_nr ────────────────────────
@@ -1517,19 +1560,20 @@ def build_perf_table_html(data):
                 plan_inv_val = plan_inv_by_month.get(m) or 0
                 plan_nr_val  = plan_nr_by_month.get(m)  or 0
                 plan_cpa_blend = round(plan_inv_val / plan_nr_val, 2) if plan_inv_val and plan_nr_val > 0 else None
-                actual_inv = inv_vs_plan_map.get(m) or 0
-                actual_nr  = monthly_nr[label].get(m, 0) or 0
+                actual_inv = r_inv_vs_plan_map.get(m) or 0
+                actual_nr  = r_nr[label].get(m, 0) or 0
                 actual_cpa_blend = round(actual_inv / actual_nr, 2) if actual_inv and actual_nr > 0 else None
-                h += f'<td style="{VS_VAL_BASE}" data-month="{m}">{fmt_pct_plan(actual_cpa_blend, plan_cpa_blend) if actual_cpa_blend is not None else "—"}</td>'
+                h += f'<td style="{VS_VAL_BASE}" data-month="{m}">{fmt_pct_plan(actual_cpa_blend, plan_cpa_blend) + _rmark(data, m) if actual_cpa_blend is not None else "—"}</td>'
             h += '</tr>'
 
         # ── CPA Paid real (normal) — derivado: actual_inv / actual_nr_paid ──────────────
         h += f'<tr data-canal="{label}"><td class="lbl-col" style="{sub_pad};{SM_LBL};background:#fff;border-left:3px solid {border}">↳ CPA Paid</td>'
         for m in months:
-            actual_inv     = inv_map.get(m) or 0
-            actual_nr_paid = perf_nr_paid[label].get(m, 0) or 0
+            actual_inv     = r_inv_map.get(m) or 0
+            actual_nr_paid = r_nr_paid[label].get(m, 0) or 0
             actual_cpa_paid = round(actual_inv / actual_nr_paid, 2) if actual_inv and actual_nr_paid > 0 else None
-            h += f'<td style="{SM_VAL}" data-month="{m}">{fmt_cpa(actual_cpa_paid)}</td>'
+            mk = _rmark(data, m) if actual_cpa_paid is not None else ''
+            h += f'<td style="{SM_VAL}" data-month="{m}">{fmt_cpa(actual_cpa_paid)}{mk}</td>'
         h += '</tr>'
 
         # ── VPU Pred 90D real (resaltada) — derivado: perf_vpu_prod / actual_nr_total ────
@@ -1537,10 +1581,10 @@ def build_perf_table_html(data):
         # VPU = ese total pre-multiplicado dividido por N+R Total (ver metrics_logic.md §4)
         h += f'<tr data-canal="{label}"><td class="lbl-col" style="{sub_pad};{HL_LBL};border-left:3px solid {border}">VPU Pred 90D</td>'
         for m in months:
-            actual_nr_total      = monthly_nr[label].get(m, 0) or 0
-            actual_valor_total   = perf_vpu_prod[label].get(m, 0) or 0  # pre-multiplicado por NR
+            actual_nr_total      = r_nr[label].get(m, 0) or 0
+            actual_valor_total   = r_vpu_prod[label].get(m, 0) or 0  # pre-multiplicado por NR
             actual_vpu_per_user  = round(actual_valor_total / actual_nr_total, 2) if actual_nr_total > 0 else 0
-            h += f'<td style="{HL_VAL}" data-month="{m}">{"$"+f"{actual_vpu_per_user:,.2f}" if actual_vpu_per_user > 0 else "—"}</td>'
+            h += f'<td style="{HL_VAL}" data-month="{m}">{"$"+f"{actual_vpu_per_user:,.2f}" + _rmark(data, m) if actual_vpu_per_user > 0 else "—"}</td>'
         h += '</tr>'
 
         # ── VPU Paid (sub-fila) — VPU sobre usuarios PAGADOS únicamente ────────────────────
@@ -1551,10 +1595,10 @@ def build_perf_table_html(data):
         if any(perf_nr_paid[label].get(m, 0) > 0 for m in months):
             h += f'<tr data-canal="{label}"><td class="lbl-col" style="{sub_pad};{SM_LBL};background:#fff;border-left:3px solid {border}">↳ VPU Paid</td>'
             for m in months:
-                nr_paid_m   = perf_nr_paid[label].get(m, 0) or 0
-                roa_val_m   = perf_roa_num[label].get(m, 0) or 0
+                nr_paid_m   = r_nr_paid[label].get(m, 0) or 0
+                roa_val_m   = r_roa_num[label].get(m, 0) or 0
                 vpu_paid_v  = round(roa_val_m / nr_paid_m, 2) if nr_paid_m > 0 and roa_val_m > 0 else None
-                h += f'<td style="{SM_VAL}" data-month="{m}">{"$"+f"{vpu_paid_v:,.2f}" if vpu_paid_v else "—"}</td>'
+                h += f'<td style="{SM_VAL}" data-month="{m}">{"$"+f"{vpu_paid_v:,.2f}" + _rmark(data, m) if vpu_paid_v else "—"}</td>'
             h += '</tr>'
 
         # ── Plan VPU + vs Plan VPU — derivado: plan_valor / plan_nr ──────────────────────
@@ -1574,10 +1618,10 @@ def build_perf_table_html(data):
                 plan_valor_val = plan_valor_by_month.get(m) or 0
                 plan_nr_val    = plan_nr_by_month.get(m)    or 0
                 plan_vpu_per_user  = round(plan_valor_val / plan_nr_val, 2) if plan_valor_val and plan_nr_val > 0 else None
-                actual_nr_total    = monthly_nr[label].get(m, 0) or 0
-                actual_valor_total = perf_vpu_prod[label].get(m, 0) or 0
+                actual_nr_total    = r_nr[label].get(m, 0) or 0
+                actual_valor_total = r_vpu_prod[label].get(m, 0) or 0
                 actual_vpu_per_user = round(actual_valor_total / actual_nr_total, 2) if actual_nr_total > 0 and actual_valor_total > 0 else None
-                h += f'<td style="{VS_VAL_BASE}" data-month="{m}">{fmt_pct_plan(actual_vpu_per_user, plan_vpu_per_user) if actual_vpu_per_user is not None else "—"}</td>'
+                h += f'<td style="{VS_VAL_BASE}" data-month="{m}">{fmt_pct_plan(actual_vpu_per_user, plan_vpu_per_user) + _rmark(data, m) if actual_vpu_per_user is not None else "—"}</td>'
             h += '</tr>'
 
         # ── Valor Pred 90D real (normal) — fuente directa: perf_vpu_prod ─────────────────
@@ -1609,10 +1653,10 @@ def build_perf_table_html(data):
         roa_val = f'{SM_VAL};font-weight:600;color:#2d5986'
         h += f'<tr data-canal="{label}"><td class="lbl-col" style="{sub_pad};{roa_lbl}">ROAs</td>'
         for m in months:
-            inv = inv_map.get(m) or 0
-            vp  = perf_roa_num[label].get(m, 0) or 0
+            inv = r_inv_map.get(m) or 0
+            vp  = r_roa_num[label].get(m, 0) or 0
             v   = round(vp / inv, 2) if inv > 0 and vp > 0 else None
-            h += f'<td style="{roa_val}" data-month="{m}">{""+f"{v:.1f}"+"x" if v else "—"}</td>'
+            h += f'<td style="{roa_val}" data-month="{m}">{""+f"{v:.1f}"+"x" + _rmark(data, m) if v else "—"}</td>'
         h += '</tr>'
 
     h += '</tbody></table></div>'
@@ -1657,18 +1701,20 @@ def build_perf_bar(data):
             marker_color=c['color']
         ))
 
-    # CPA Blended = Inversión Total / N+R Total (cruce HIERARCHY_C ↔ HIERARCHY_NR)
+    # CPA Blended = Inversión Total / N+R Total (cruce HIERARCHY_C ↔ HIERARCHY_NR).
+    # §97: líneas de ratio con los gemelos (mes en curso al corte común); barras con originales.
+    r_inv_total, r_nr = data['r_inv_total'], data['r_nr']
     cpa_blend_y = []
     for m in cost_months:
-        inv = monthly_inv_total.get('Total Inversión', {}).get(m) or 0
-        nr  = monthly_nr.get('Total N+R', {}).get(m) or 0
+        inv = r_inv_total.get('Total Inversión', {}).get(m) or 0
+        nr  = r_nr.get('Total N+R', {}).get(m) or 0
         cpa_blend_y.append(round(inv / nr, 2) if inv and nr > 0 else None)
 
     # ROAs = perf_roa_num / Inversión  (numerador varía por canal: COSTOS para UCR/OC, HISTORICO para POM/MGM)
-    perf_roa_num = data['perf_roa_num']
+    perf_roa_num = data['r_roa_num']
     roas_y = []
     for m in cost_months:
-        inv = monthly_inv_total.get('Total Inversión', {}).get(m) or 0
+        inv = r_inv_total.get('Total Inversión', {}).get(m) or 0
         vp  = perf_roa_num.get('Total N+R', {}).get(m) or 0
         roas_y.append(round(vp / inv, 2) if inv > 0 and vp > 0 else None)
 
@@ -2171,9 +2217,11 @@ def build_install_activation_tab_html(data):
     import json as _json
     import datetime as _dt
 
-    monthly_nr       = data.get('monthly_nr', {})
-    monthly_installs = data.get('monthly_installs', {})
-    inv_total        = data.get('monthly_inv_total', {})
+    # §97: LFT, CPI y CPA son ratios entre tres fuentes (N+R, installs, inversión) — se usan
+    # los gemelos ri_* (mes en curso con las tres cortadas al último día completo común).
+    monthly_nr       = data['ri_nr']
+    monthly_installs = data['ri_installs']
+    inv_total        = data['ri_inv_total']
     nr_months        = data.get('months', [])
     inst_months      = data.get('installs_months', [])
 
@@ -2604,13 +2652,15 @@ def build_installs_table_html(data):
     """Tabla HTML estática de Installs Mensuales (pestaña Installs Mensual §88).
 
     Filas por canal: Installs | MoM | CPI (solo canales con inversión)
-    CPI usa installs_inv_total (§92): inversión cortada al último día de installs.
+    CPI = ri_inv_total / ri_installs (§97): ambos cortados al último día completo en todas
+    las fuentes en el mes en curso. La fila de Installs sigue con todo lo cargado.
     """
     HIERARCHY_NR         = data['HIERARCHY_NR']
     months               = data.get('installs_months', data['months'])
     monthly_installs     = data['monthly_installs']
     monthly_installs_mom = data['monthly_installs_mom']
-    monthly_inv_total    = data['installs_inv_total']
+    monthly_inv_total    = data['ri_inv_total']      # §97: numerador del CPI
+    ri_installs          = data['ri_installs']       # §97: denominador del CPI
 
     CLS = {
         'grand': ('background:#1a2744;color:#fff;font-weight:700', 'background:#111d38;color:#9db4d0'),
@@ -2631,7 +2681,8 @@ def build_installs_table_html(data):
         key = 'Total Inversión' if label == 'Total N+R' else label
         return monthly_inv_total.get(key, {})
 
-    h = ('<div class="table-scroll"><table class="mom-tbl" id="tbl-installs-mensual">'
+    h = (_ratio_note(data, 'inst', 'CPI') +
+         '<div class="table-scroll"><table class="mom-tbl" id="tbl-installs-mensual">'
          '<thead><tr><th class="lbl-col">Canal</th>')
     for m in months:
         h += f'<th data-month="{m}">{fmt_month(m)}</th>'
@@ -2668,9 +2719,9 @@ def build_installs_table_html(data):
                   f'style="{sub_pad};{cpi_s}">↳ CPI (USD)</td>')
             for m in months:
                 inv  = inv_map.get(m) or 0
-                inst = monthly_installs.get(label, {}).get(m, 0)
+                inst = ri_installs.get(label, {}).get(m, 0)
                 cpi  = round(inv / inst, 2) if inst > 0 and inv > 0 else None
-                cell = f'${cpi:.2f}' if cpi else '—'
+                cell = f'${cpi:.2f}{_rmark(data, m, "inst")}' if cpi else '—'
                 h += f'<td style="{cpi_s};text-align:right" data-month="{m}">{cell}</td>'
             h += '</tr>'
 
@@ -2690,7 +2741,8 @@ def build_installs_bar(data):
     HIERARCHY_NR      = data['HIERARCHY_NR']
     months            = data.get('installs_months', data['months'])
     monthly_installs  = data['monthly_installs']
-    monthly_inv_total = data['installs_inv_total']   # §92: cortada al último día de installs
+    monthly_inv_total = data['ri_inv_total']   # §97: numerador CPI al corte común
+    ri_installs       = data['ri_installs']    # §97: denominador CPI al corte común
 
     leaf_nodes = sorted(
         [c for c in HIERARCHY_NR if c.get('is_leaf')],
@@ -2718,12 +2770,11 @@ def build_installs_bar(data):
             marker_color=c['color']
         ))
 
-    # Línea CPI (Cost Per Install) = Inversión Total / Installs Totales
-    # Inversión = installs_inv_total['Total Inversión'] (monthly_inv_total cortada §92)
+    # Línea CPI (Cost Per Install) = Inversión Total / Installs Totales, ambos al corte §97
     cpi_y = []
     for m in months:
         inv   = (monthly_inv_total.get('Total Inversión', {}).get(m) or 0)
-        inst  = monthly_installs.get('Total N+R', {}).get(m, 0)
+        inst  = ri_installs.get('Total N+R', {}).get(m, 0)
         cpi_y.append(round(inv / inst, 4) if inst > 0 and inv > 0 else None)
 
     has_cpi = any(v is not None and v > 0 for v in cpi_y)
@@ -3188,8 +3239,10 @@ def build_reporting_tab_html(data, plan_nr, plan_inv, plan_valor, new_rec_monthl
 
     # ── Auxiliary data ────────────────────────────────────────────────
     inv_total  = data.get('monthly_inv_total', {})
-    cpa_total  = data.get('monthly_cpa_total', {})
-    cpa_paid   = data.get('monthly_cpa_paid',  {})
+    # §97: CPA con los gemelos — solo difiere el día 1-2 del mes, cuando el mes recién cerrado
+    # todavía no tiene su último día completo en todas las fuentes.
+    cpa_total  = data['r_cpa_total']
+    cpa_paid   = data['r_cpa_paid']
     vpu_prod   = data.get('perf_vpu_prod',     {})
     nr_fm      = data.get('monthly_nr',        {})
 

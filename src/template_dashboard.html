@@ -800,17 +800,29 @@ function getLeafNRToHL(canal) {
   return D.leaf_labels;
 }
 
+// §97: ¿el día d del mes `month` entra en los RATIOS? Solo hasta D.ratio_cut_main, el último
+// día completo en todas las fuentes. Después (p. ej. el día de Torre Daily que llega a medias:
+// costo parcial y N+R 0) el CPA diario no se dibuja. Los conteos se muestran igual.
+function ratioDayOK(month, d) {
+  const cut = D.ratio_cut_main;                       // 'YYYY-MM-DD'
+  if (!cut) return true;
+  const cutM = cut.slice(0, 4) + cut.slice(5, 7);
+  if (month !== cutM) return month < cutM;
+  return Number(d) <= Number(cut.slice(8, 10));
+}
+
 function updateCPANRMensual(canal) {
   const gd = document.getElementById('chart-nr-mensual-bar');
   if (!gd || !gd.data) return;
   const cprIdx = gd.data.findIndex(t => t.name === 'CPA (USD)');
   if (cprIdx < 0) return;
   const toHL = getLeafNRToHL(canal);
+  // §97: gemelos r_nr / r_cost — mes en curso con costo y N+R cortados al mismo día
   const newY = D.months.map(m => {
     let nr = 0, cost = 0;
     toHL.forEach(leaf => {
-      nr   += ((D.monthly_nr[leaf]   || {})[m]) || 0;
-      cost += ((D.monthly_cost[leaf] || {})[m]) || 0;
+      nr   += ((D.r_nr[leaf]   || {})[m]) || 0;
+      cost += ((D.r_cost[leaf] || {})[m]) || 0;
     });
     return nr > 0 ? cost / nr : null;
   });
@@ -974,8 +986,8 @@ function updateAnnotInstallsMensual(canal) {
 
 function updateCPIInstallsMensual(canal) {
   // CPI = Inversión / Installs del nodo seleccionado — misma regla que la tabla Python.
-  // §92: D.installs_inv_total = monthly_inv_total con el mes en curso cortado al último
-  // día de installs (installs suele llegar 1 día detrás de la inversión).
+  // §97: gemelos ri_inv_total / ri_installs — en el mes en curso ambos cortados al último
+  // día completo en todas las fuentes (D.ratio_cut_inst).
   const gd = document.getElementById('chart-installs-mensual-bar');
   if (!gd || !gd.data) return;
   const cpiIdx = gd.data.findIndex(t => t.name === 'CPI (USD)');
@@ -984,8 +996,8 @@ function updateCPIInstallsMensual(canal) {
   const invKey     = node === 'Total N+R' ? 'Total Inversión' : node;
   const instMonths = D.installs_months || D.months;
   const newY = instMonths.map(m => {
-    const inst = ((D.monthly_installs[node]        || {})[m]) || 0;
-    const cost = ((D.installs_inv_total[invKey]    || {})[m]) || 0;
+    const inst = ((D.ri_installs[node]     || {})[m]) || 0;
+    const cost = ((D.ri_inv_total[invKey]  || {})[m]) || 0;
     return inst > 0 && cost > 0 ? cost / inst : null;
   });
   const newCust = newY.map(v => v != null ? '$' + v.toFixed(2) : '—');
@@ -2174,6 +2186,7 @@ function renderChartNRDiarioAcum(month) {
   });
 
   const cprVals = days.map((d, i) => {
+    if (!ratioDayOK(month, d)) return null;           // §97: día fuera del corte de ratios
     let totalNRday = 0, totalCostDay = 0;
     toShow.forEach(leaf => {
       const cumM  = (D.daily_cum[leaf]  || {})[month] || {};
@@ -2291,6 +2304,7 @@ function renderNRDiario(month) {
   });
 
   const cprVals = days.map(d => {
+    if (!ratioDayOK(month, d)) return null;           // §97: día fuera del corte de ratios
     let totalNR   = 0, totalCost = 0;
     toShow.forEach(leaf => {
       const nr   = getDailyNR(leaf, month, d) || 0;
@@ -2401,11 +2415,11 @@ function updateChartPerf(canal) {
   if (idxRoas    >= 0) visible[idxRoas]    = true;
   if (idxPlanInv >= 0) visible[idxPlanInv] = true;
 
-  // Recalcular CPA Blend real
+  // Recalcular CPA Blend real — §97: gemelos r_* (mes en curso al corte común de fuentes)
   if (idxCpa >= 0) {
     const y = D.cost_months.map(m => {
-      const inv = toHL.reduce((s, lbl) => s + ((D.monthly_inv_total[lbl] || {})[m] || 0), 0);
-      const nr  = toHL.reduce((s, lbl) => s + ((D.monthly_nr[lbl]       || {})[m] || 0), 0);
+      const inv = toHL.reduce((s, lbl) => s + ((D.r_inv_total[lbl] || {})[m] || 0), 0);
+      const nr  = toHL.reduce((s, lbl) => s + ((D.r_nr[lbl]        || {})[m] || 0), 0);
       return nr > 0 ? Math.round(inv / nr * 100) / 100 : null;
     });
     const cust = y.map(v => v != null ? '$' + v.toFixed(2) : '—');
@@ -2415,10 +2429,10 @@ function updateChartPerf(canal) {
   // Recalcular ROAs = (VPU_avg × N+R Paid) / Inv
   if (idxRoas >= 0) {
     const y = D.cost_months.map(m => {
-      const inv  = toHL.reduce((s, lbl) => s + ((D.monthly_inv_total[lbl]  || {})[m] || 0), 0);
-      const nr   = toHL.reduce((s, lbl) => s + ((D.monthly_nr[lbl]         || {})[m] || 0), 0);
-      const vpuP = toHL.reduce((s, lbl) => s + ((D.perf_vpu_prod[lbl]      || {})[m] || 0), 0);
-      const paid = toHL.reduce((s, lbl) => s + ((D.perf_nr_paid[lbl]       || {})[m] || 0), 0);
+      const inv  = toHL.reduce((s, lbl) => s + ((D.r_inv_total[lbl] || {})[m] || 0), 0);
+      const nr   = toHL.reduce((s, lbl) => s + ((D.r_nr[lbl]        || {})[m] || 0), 0);
+      const vpuP = toHL.reduce((s, lbl) => s + ((D.r_vpu_prod[lbl]  || {})[m] || 0), 0);
+      const paid = toHL.reduce((s, lbl) => s + ((D.r_nr_paid[lbl]   || {})[m] || 0), 0);
       const vpu  = nr > 0 ? vpuP / nr : 0;
       const vp   = vpu * paid;
       return (inv > 0 && vp > 0) ? Math.round(vp / inv * 100) / 100 : null;

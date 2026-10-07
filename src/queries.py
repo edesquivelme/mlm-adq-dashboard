@@ -664,7 +664,29 @@ def _tc_channel_parts(HIERARCHY_NR):
     }
 
 
-def get_vpu_tc_sql(HIERARCHY_NR):
+_DESDE_HIST = "DATE '2025-01-01'"
+_HASTA_D1   = "DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)"
+
+
+def _cut_to(sql, max_date):
+    """§97 — Corta un SQL al mes de max_date, del día 1 a max_date inclusive.
+
+    Reemplaza los límites estándar de las CTEs (desde 2025-01-01 hasta D-1). Lo usan los
+    gemelos de ratios (processors.process_all, bloque 3d §97) para recalcular el mes en curso al
+    último día completo en todas las fuentes. Sin max_date devuelve el SQL intacto.
+    Solo sirve para SQLs cuyas únicas fechas son esos límites: si no aparecen en pares,
+    falla en vez de devolver un corte a medias.
+    """
+    if not max_date:
+        return sql
+    n_desde, n_hasta = sql.count(_DESDE_HIST), sql.count(_HASTA_D1)
+    if n_desde == 0 or n_desde != n_hasta:
+        raise ValueError(f"_cut_to: límites inesperados en el SQL (desde={n_desde}, hasta={n_hasta})")
+    return (sql.replace(_DESDE_HIST, f"DATE '{max_date.replace(day=1).isoformat()}'")
+               .replace(_HASTA_D1,   f"DATE '{max_date.isoformat()}'"))
+
+
+def get_vpu_tc_sql(HIERARCHY_NR, max_date=None):
     """SQL Valor Pred 90D por canal/mes desde la Torre de Control (TC).
 
     Reemplaza: get_perf_vpu_sql(HIERARCHY_NR)
@@ -678,6 +700,8 @@ def get_vpu_tc_sql(HIERARCHY_NR):
       oc_vpu_tc   → NR_INC_VALUE de BT_OC_NR_REPORTE_TORRE_DAILY
       paid_vpu_tc → VALUE_MKT_USD_7D (INSTALLS) / VALUE_MKT_USD (TOOL_COST) de BT_MP_INDIVIDUALS_PERFORMANCE
       org_vpu_tc  → §75: ORG VPU desde paid_vpu_tc (BT_MP_INDIVIDUALS_PERFORMANCE, NOT NETWORK APPE)
+
+    max_date (opcional, §97): solo el mes de max_date hasta ese día (ver _cut_to).
     """
     p = _tc_channel_parts(HIERARCHY_NR)
 
@@ -772,7 +796,7 @@ def get_vpu_tc_sql(HIERARCHY_NR):
         org_vpu_cte   = ""
         org_vpu_union = ""
 
-    return f"""
+    return _cut_to(f"""
     -- ═══════════════════════════════════════════════════════════════════════
     -- get_vpu_tc_sql() — Valor Pred 90D por canal/mes TC | §71 §78
     -- Reemplaza: get_perf_vpu_sql()
@@ -849,7 +873,7 @@ def get_vpu_tc_sql(HIERARCHY_NR):
       SUM(VPU_PROD)  AS NR_VPU_PROD
     FROM union_vpu_tc
     GROUP BY MONTH_ID, PERF_CANAL
-    """
+    """, max_date)
 
 
 def get_costos_tc_sql(HIERARCHY_NR, max_date=None):
@@ -1016,7 +1040,7 @@ def get_costos_tc_sql(HIERARCHY_NR, max_date=None):
     """
 
 
-def get_perf_paid_tc_sql(HIERARCHY_NR):
+def get_perf_paid_tc_sql(HIERARCHY_NR, max_date=None):
     """SQL N+R Paid/Free split por canal/mes desde la Torre de Control (TC).
 
     Reemplaza: get_perf_paid_sql(HIERARCHY_C) — ahora recibe HIERARCHY_NR.
@@ -1026,10 +1050,12 @@ def get_perf_paid_tc_sql(HIERARCHY_NR):
     OC: FLAG_PAID='PAID' → NR_PAID; FLAG_PAID='FREE' → solo NR_TOTAL.
     Paid: COST_USD > 0 → NR_PAID (mismo criterio que COSTOS_CANALES vieja).
     NR_GEST_OTHERS = 0 (métrica legacy MGM sin equivalente directo en TC).
+
+    max_date (opcional, §97): solo el mes de max_date hasta ese día (ver _cut_to).
     """
     p = _tc_channel_parts(HIERARCHY_NR)
 
-    return f"""
+    return _cut_to(f"""
     -- ═══════════════════════════════════════════════════════════════════════
     -- get_perf_paid_tc_sql() — N+R Paid/Free split por canal/mes TC | §71
     -- Reemplaza: get_perf_paid_sql(HIERARCHY_C)
@@ -1127,10 +1153,10 @@ def get_perf_paid_tc_sql(HIERARCHY_NR):
     )
     WHERE PERF_CANAL IS NOT NULL
     GROUP BY MONTH_ID, PERF_CANAL
-    """
+    """, max_date)
 
 
-def get_roa_tc_sql():
+def get_roa_tc_sql(max_date=None):
     """SQL numerador ROA para UCR Gest y OC ACT desde la Torre de Control (TC).
 
     Reemplaza: get_perf_roa_costos_sql()
@@ -1140,8 +1166,10 @@ def get_roa_tc_sql():
     Solo OC canales: CLASIFICACION='UCRANIA' → UCR Gest, ('ACTIVATION','ADHOC') → OC ACT.
     Filtro FLAG_PAID='PAID' + cost > 0: excluye comms FREE (sin inversión real).
     POM y MGM ROA se calculan desde perf_vpu_prod en processors.py (sin cambio).
+
+    max_date (opcional, §97): solo el mes de max_date hasta ese día (ver _cut_to).
     """
-    return """
+    return _cut_to("""
     -- ═══════════════════════════════════════════════════════════════════════
     -- get_roa_tc_sql() — Numerador ROA OC por canal/mes TC | §71 History.md
     -- Reemplaza: get_perf_roa_costos_sql()
@@ -1164,7 +1192,7 @@ def get_roa_tc_sql():
       AND (COALESCE(CONSUMIDO_USD, 0) + COALESCE(COSTO_ENVIO_USD, 0) + COALESCE(COSTO_MANTIKA_USD, 0)) > 0
     GROUP BY MONTH_ID, PERF_CANAL
     HAVING PERF_CANAL IS NOT NULL
-    """
+    """, max_date)
 
 
 def get_costos_sql(HIERARCHY_C):
@@ -1989,7 +2017,7 @@ def get_new_rec_monthly_sql():
     """
 
 
-def get_installs_monthly_sql(HIERARCHY_NR):
+def get_installs_monthly_sql(HIERARCHY_NR, max_date=None):
     """SQL installs mensuales por canal — SSOT: LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE (§92).
 
     Fuente certificada: meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE
@@ -2017,9 +2045,13 @@ def get_installs_monthly_sql(HIERARCHY_NR):
 
     HIERARCHY_NR: recibido por consistencia de firma; no se usa en el SQL —
     la tabla ya tiene la clasificación de canales correcta.
+    max_date (opcional, §97): solo el mes de max_date hasta ese día inclusive — para el
+    denominador del CPI/LFT del mes en curso al corte común de ratios.
     Retorna: MONTH_ID (YYYYMM str), INST_CANAL (label), INSTALLS (float)
     """
-    return """
+    _corte = (f"AND fecha_mes = '{max_date.strftime('%Y%m')}'\n"
+              f"      AND fecha_diaria <= DATE '{max_date.isoformat()}'") if max_date else ""
+    return f"""
     -- ═══════════════════════════════════════════════════════════════════════════
     -- get_installs_monthly_sql() — SSOT LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE §92
     -- Verificado vs Corp screenshot: diferencia < 1% en todos los canales.
@@ -2045,6 +2077,7 @@ def get_installs_monthly_sql(HIERARCHY_NR):
     FROM `meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE`
     WHERE sit_site_id = 'MLM'
       AND fecha_mes  >= '202501'
+      {_corte}
     GROUP BY 1, 2
     HAVING INST_CANAL IS NOT NULL
     ORDER BY 1, 2

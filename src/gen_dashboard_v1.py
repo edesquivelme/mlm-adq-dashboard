@@ -62,8 +62,8 @@ from processors        import (
     process_nr_corp,
     process_nr_corp_daily,
     process_comms_oc,          # Two-Tier: carga cache JSON + query BQ semana actual (History.md §45)
-    process_installs_monthly,  # §88: installs FM + Corp
-    process_installs_capped_inv,  # §92: inversión del CPI cortada al día de installs
+    process_installs_monthly,  # §88: installs FM + Corp (+ gemelo ri_installs §97)
+    ratio_twin,                # §97: gemelo de una serie para ratios del mes en curso
     fmt_month,
     get_descendants,
     bq_rows,
@@ -138,10 +138,10 @@ def check_installs_freshness(client, managed_max):
 
     **Actualización 2026-10-06 — corte del CPI:** desde que Individuals Perf llega a
     D-1, Installs (que sigue en D-2) queda 1 día detrás de la inversión y el CPI del
-    mes salía inflado (+25% el día 5). Ya no se alarma por eso:
-    process_installs_capped_inv() corta la inversión del CPI en `max_dia` de Installs,
-    así que el CPI sale correcto con cualquier desfase. Esta función solo informa el
-    corte y conserva las dos alarmas reales: SIN DATOS y FUENTE CONGELADA.
+    mes salía inflado (+25% el día 5). Ya no se alarma por eso: desde §97 el CPI se
+    calcula con inversión e installs cortados al último día completo en todas las
+    fuentes (compute_ratio_cuts + gemelos ri_*), en los dos sentidos del desfase. Esta
+    función solo informa y conserva las dos alarmas reales: SIN DATOS y FUENTE CONGELADA.
     El texto de abajo explica por qué la distorsión depende del día del mes (sigue
     siendo cierto: es lo que el corte neutraliza).
 
@@ -215,17 +215,144 @@ def check_installs_freshness(client, managed_max):
         print(f"      → Sin auto-ajuste posible: si la fuente no carga, no hay dato.")
         print(f"      → ACCIÓN: escalar a los owners de la tabla (Corp). Ver §92.")
         print("  " + "=" * 62)
-    elif row.max_dia < managed_max:
-        # Desfase normal (Installs 1 día detrás de la inversión): el CPI se corta en
-        # max_dia (process_installs_capped_inv) → sale correcto. Solo se informa.
-        print(f"  ℹ️  Installs: {row.max_dia} vs inversión {managed_max} — "
-              f"CPI con inversión cortada a {row.max_dia} (auto-ajuste §92; "
-              f"sin el corte saldría {distorsion * 100:+.0f}%). Sin acción.")
     else:
-        print(f"  ✅ Installs alineado con inversión: {row.max_dia} vs {managed_max} "
-              f"({dias_inst} vs {dias_inv} día(s) de {mes_ref}) — "
-              f"distorsión CPI {distorsion * 100:+.0f}%")
+        # §97: el CPI ya no depende de que installs e inversión lleguen parejos — se calcula
+        # al último día completo en todas sus fuentes (compute_ratio_cuts). Antes este print
+        # decía "✅ alineado" comparando solo fechas máximas y no veía el día de Torre Daily
+        # a medias (7-Oct-26: "+0%" con el CPI −15%). Solo informa.
+        print(f"  ℹ️  Installs hasta {row.max_dia} ({dias_inst} día(s) de {mes_ref}). "
+              f"CPI al corte común de ratios (ver Paso 0c).")
     return result
+
+
+# §97 — Tablas que cargan una vez al día (~18:25) con ese MISMO día a medias: el 6-Oct-26
+# Torre Daily traía costo UCR $4K (normal ~$20K) y N+R incremental 0. Para ellas el último
+# día cuenta como completo solo si la tabla se modificó después de que ese día terminó.
+_PARTIAL_DAY_TABLES = {
+    'torre':     "meli-bi-data.SBOX_EG_MKT.BT_OC_NR_REPORTE_TORRE_DAILY",
+    'campaigns': "meli-bi-data.SBOX_EG_MKT.BT_OC_DASHBOARD_ALL_CAMPAIGNS_NR",
+}
+_CDMX = datetime.timezone(datetime.timedelta(hours=-6))   # México sin horario de verano desde 2022
+
+
+def compute_ratio_cuts(client, source_lag, installs_lag):
+    """§97 — Día de corte de los ratios del mes en curso: el último COMPLETO en todas sus fuentes.
+
+    Un ratio (CPA, VPU, ROAS, CPI, LFT) divide dos números de tablas distintas. Si cada una
+    llega hasta un día diferente — o una trae su último día a medias — el ratio sale torcido
+    sin que ninguna fuente esté mal (7-Oct-26: CPI Total −15%, CPA OC ACT +7%). Los conteos
+    siguen mostrando todo lo cargado; solo los ratios usan este corte (gemelos r_* / ri_*).
+
+    Completo hasta:
+      · Tablas de _PARTIAL_DAY_TABLES: min(MAX(día), fecha de modificación − 1, ayer).
+      · Vistas (INAPP, Individuals Perf, Installs): no exponen su hora de carga real →
+        min(MAX(día), ayer). Individuals Perf se reconstruye ~09:56 con D-1 cerrado (§96).
+    'main' = min(INAPP, Torre, campañas, Individuals Perf) → CPA / VPU / ROAS.
+    'inst' = min(main, Installs)                          → CPI / LFT.
+
+    Imprime la tabla de fuentes (hasta dónde llega cada una y hasta dónde está completa).
+    Devuelve {'main': date, 'inst': date, 'fuentes': [(nombre, max, completo, nota)]}.
+    """
+    hoy  = datetime.datetime.now(_CDMX).date()
+    ayer = hoy - datetime.timedelta(days=1)
+    camp_max = bq_rows(client, f"""
+        SELECT MAX(SENT_DATE) AS mx FROM `{_PARTIAL_DAY_TABLES['campaigns']}`
+        WHERE SENT_DATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 40 DAY)""")[0].mx
+
+    fuentes = []
+    for nombre, max_dia, tabla in [
+            ('INAPP (Total N+R)',   source_lag['inapp_max'], None),
+            ('Torre Daily (OC)',    source_lag['torre_max'], _PARTIAL_DAY_TABLES['torre']),
+            ('Campañas (UCR Gest)', camp_max,                _PARTIAL_DAY_TABLES['campaigns']),
+            ('Individuals Perf',    source_lag['indiv_max'], None),
+            ('Installs',            installs_lag['max_dia'], None)]:
+        if max_dia is None:
+            raise RuntimeError(f"compute_ratio_cuts: {nombre} no tiene fecha máxima — fuente vacía")
+        completo, nota = min(max_dia, ayer), ''
+        if tabla:
+            mod = client.get_table(tabla).modified.astimezone(_CDMX)
+            completo = min(completo, mod.date() - datetime.timedelta(days=1))
+            nota = f"cargó {mod:%Y-%m-%d %H:%M}" + (f" → {max_dia} a medias" if max_dia >= mod.date() else "")
+        fuentes.append((nombre, max_dia, completo, nota))
+
+    main = min(f[2] for f in fuentes if f[0] != 'Installs')
+    inst = min(main, fuentes[-1][2])
+    print(f"      {'Fuente':<22}{'último día':<13}{'completo hasta':<16}")
+    for nombre, max_dia, completo, nota in fuentes:
+        print(f"      {nombre:<22}{str(max_dia):<13}{str(completo):<16}{nota}")
+    print(f"  → Ratios del mes en curso (CPA, VPU, ROAS) al {main}; CPI y LFT al {inst}. "
+          f"Conteos: todo lo cargado (§97).")
+    return {'main': main, 'inst': inst, 'fuentes': fuentes}
+
+
+def validate_ratios(data, ratio_cuts):
+    """§97 — Vigilancia automática: chequeos que atrapan ratios y cruces descuadrados.
+
+    Una línea por chequeo: "[VALIDACION][OK] ..." o "[VALIDACION][ALERTA] ...".
+    scripts/auto_actualizar.ps1 cuenta las ALERTA y las pone en la notificación de Windows
+    de la corrida de las 10:30. No bloquean el deploy: el dashboard se publica igual y la
+    alerta dice qué revisar. Devuelve la lista de alertas.
+    """
+    alertas = []
+    def _ok(msg):
+        print(f"  [VALIDACION][OK] {msg}")
+    def _alerta(msg):
+        alertas.append(msg)
+        print(f"  [VALIDACION][ALERTA] {msg}")
+    def _pct(a, b):
+        return (a / b - 1) * 100 if b else 0.0
+
+    cut   = ratio_cuts['main']
+    cut_m = cut.strftime('%Y%m')
+    hoy   = datetime.datetime.now(_CDMX).date()
+
+    # 1. Los ratios no se quedan atrás de más de 3 días (una fuente dejó de cargar)
+    atraso = (hoy - cut).days
+    (_ok if atraso <= 3 else _alerta)(
+        f"Corte de ratios {cut} = D-{atraso}" + ("" if atraso <= 3 else
+        " — alguna fuente se atrasó; ver la tabla del Paso 0c"))
+
+    # 2. Gemelos idénticos al original en meses cerrados: el corte solo toca el mes en curso
+    pares = [('r_nr', 'monthly_nr'), ('r_cost', 'monthly_cost'), ('r_inv_total', 'monthly_inv_total'),
+             ('r_nr_paid', 'perf_nr_paid'), ('r_vpu_prod', 'perf_vpu_prod'), ('r_roa_num', 'perf_roa_num'),
+             ('ri_nr', 'monthly_nr'), ('ri_inv_total', 'monthly_inv_total'), ('ri_installs', 'monthly_installs')]
+    cerrados_m = ratio_cuts['inst'].strftime('%Y%m')
+    malos = [tw for tw, orig in pares
+             if any(data[tw][l].get(m) != v
+                    for l, by_m in data[orig].items() for m, v in by_m.items() if m < min(cut_m, cerrados_m))]
+    (_ok if not malos else _alerta)(
+        "Meses cerrados idénticos con y sin corte" if not malos else
+        f"Gemelos distintos al original en meses cerrados: {', '.join(malos)}")
+
+    # 3. El corte solo puede QUITAR días: gemelo ≤ original en el mes del corte
+    #    (0.5% de holgura: las queries cortadas corren segundos después y la fuente puede corregir)
+    for tw, orig, lbl, m in [('r_nr', 'monthly_nr', 'Total N+R', cut_m),
+                             ('r_inv_total', 'monthly_inv_total', 'Total Inversión', cut_m),
+                             ('ri_installs', 'monthly_installs', 'Total N+R', ratio_cuts['inst'].strftime('%Y%m'))]:
+        v_tw, v_or = data[tw][lbl].get(m) or 0, data[orig][lbl].get(m) or 0
+        (_ok if v_tw <= v_or * 1.005 + 1 else _alerta)(
+            f"{orig} {lbl} {m}: cortado {v_tw:,.0f} ≤ completo {v_or:,.0f}")
+
+    # 4. Costo de las pestañas N+R ≈ inversión de Performance (Total). Cuadran a <1.1%
+    #    en 2026; un fan-out como el de §94 (costo ×60) lo rompe de inmediato.
+    for m in [x for x in data['cost_months'] if x in data['months']][-6:]:
+        c, i = data['monthly_cost']['Total N+R'].get(m, 0), data['monthly_inv_total']['Total Inversión'].get(m) or 0
+        if abs(_pct(c, i)) > 2:
+            _alerta(f"Costo NR Mensual vs Inversión Performance {m}: {c:,.0f} vs {i:,.0f} ({_pct(c, i):+.1f}%)")
+    if not any('Costo NR Mensual' in a for a in alertas):
+        _ok("Costo NR Mensual ≈ Inversión Performance (±2%, últimos 6 meses)")
+
+    # 5. Total N+R FM = Corp (§82) e Installs FM = Corp — mismas fuentes, otra jerarquía
+    for nombre, fm, corp in [('N+R', data['monthly_nr']['Total N+R'], data['monthly_nr_corp_by_node'].get('corp_total', {})),
+                             ('Installs', data['monthly_installs']['Total N+R'], data['installs_corp_by_node'].get('corp_total', {}))]:
+        difs = [f"{m} {_pct(fm.get(m, 0), corp.get(m, 0)):+.1f}%" for m in sorted(fm)[-6:]
+                if corp.get(m) and abs(_pct(fm.get(m, 0), corp.get(m, 0))) > 0.5]
+        (_ok if not difs else _alerta)(
+            f"{nombre} Total FM = Corp (±0.5%, últimos 6 meses)" if not difs else
+            f"{nombre} Total FM ≠ Corp: {', '.join(difs)}")
+
+    print(f"  Validación §97: {len(alertas)} alerta(s)")
+    return alertas
 
 
 def load_plan(config, all_months):
@@ -459,7 +586,23 @@ def build_perf_corp_data(config, data):
             # Plan N+R (de load_plan_corp() — indexado por corp_node_id)
             plan_nr_value_this_month    = plan_nr_corp_by_node_id.get(corp_node_id_for_mapping, {}).get(month)
 
+            # §97: numeradores y denominadores para RATIOS — iguales a los actual_* en meses
+            # cerrados; en el mes en curso cortados al último día completo en todas las fuentes.
+            r_inv_total = (data['r_inv_total'].get(cost_inv_label, {}).get(month) if cost_inv_label else None)
+            r_inv_vs_plan = r_inv_total
+            if cost_inv_label == 'Total Inversión' and r_inv_total is not None:
+                r_inv_vs_plan = r_inv_total - data['r_inv_sin_plan'].get(month, 0)
+            ratio_fields = {
+                'r_nr_total':    data['r_nr_corp_by_node'].get(corp_node_id_for_mapping, {}).get(month, 0),
+                'r_nr_paid':     data['r_nr_paid'].get(nr_perf_label, {}).get(month, 0)  if nr_perf_label else 0,
+                'r_vpu_prod':    data['r_vpu_prod'].get(nr_perf_label, {}).get(month, 0) if nr_perf_label else 0,
+                'r_roa_num':     data['r_roa_num'].get(nr_perf_label, {}).get(month, 0)  if nr_perf_label else 0,
+                'r_inv_total':   r_inv_total,
+                'r_inv_vs_plan': r_inv_vs_plan,
+            }
+
             perf_corp_data_by_node[corp_node_id_for_mapping][month] = {
+                **ratio_fields,
                 'actual_nr_total':     actual_nr_total_this_month,
                 'actual_nr_paid':      actual_nr_paid_this_month,
                 'actual_nr_go':        actual_nr_go_this_month,
@@ -1055,7 +1198,9 @@ def assemble():
     source_lag = check_source_lag(client)
     print(">>> Paso 0b: Verificando frescura de Installs (ALARMA §92)...")
     installs_lag = check_installs_freshness(client, source_lag['managed_max'])
-    data   = process_all(config, client, N_PRIOR)
+    print(">>> Paso 0c: Corte común de ratios del mes en curso (§97)...")
+    ratio_cuts = compute_ratio_cuts(client, source_lag, installs_lag)
+    data   = process_all(config, client, N_PRIOR, ratio_cuts=ratio_cuts)
 
     # ── 3. Plan Excel ─────────────────────────────────────────
     print(">>> Paso 3: Cargando Plan desde Excel...")
@@ -1079,26 +1224,32 @@ def assemble():
     data['monthly_nr_corp_by_node'] = monthly_nr_corp_by_node
     data['daily_nr_corp_by_node']   = daily_nr_corp_by_node
     data['plan_nr_corp_by_node']    = plan_nr_corp_by_node  # Plan específico de la tabla corp
+    # §97: gemelo del N+R Corp para los ratios de Performance Corp — el mes del corte se
+    # arma sumando el N+R diario por nodo hasta el día del corte.
+    _cut, _cut_m = ratio_cuts['main'], ratio_cuts['main'].strftime('%Y%m')
+    data['r_nr_corp_by_node'] = ratio_twin(monthly_nr_corp_by_node, _cut_m, {
+        nid: sum(v for d, v in daily_nr_corp_by_node.get(nid, {}).get(_cut_m, {}).items() if int(d) <= _cut.day)
+        for nid in monthly_nr_corp_by_node})
     # Performance corp: ensambla métricas de performance por corp_node_id reutilizando data{}
     data['perf_corp_data_by_node'] = build_perf_corp_data(config, data)
 
     # ── 3d. Installs Mensual (§88) ────────────────────────────────────────────
     # Fuentes: Q_INSTALLS (UCR Gest) + QTY_DEVICES/INSTALLS (Paid) + Corp por corp_key
     print(">>> Paso 3d: Consultando BigQuery (Installs Mensual FM + Corp)...")
-    installs_data = process_installs_monthly(client, config)
+    installs_data = process_installs_monthly(client, config, ratio_cut_inst=ratio_cuts['inst'])
     # Inyectar en data{} para builders Python
     data['monthly_installs']      = installs_data['monthly_installs']
     data['monthly_installs_mom']  = installs_data['monthly_installs_mom']
     data['installs_months']       = installs_data['installs_months']
     data['installs_corp_by_node'] = installs_data['installs_corp_by_node']
-    # §92: CPI = inversión cortada al último día de installs (installs suele ir 1 día atrás)
-    data['installs_inv_total'], _cpi_cap_month = process_installs_capped_inv(
-        client, config, data['monthly_inv_total'],
-        installs_lag['max_dia'], source_lag['managed_max'])
-    if _cpi_cap_month:
-        print(f"  OK CPI {_cpi_cap_month}: inversión cortada a {installs_lag['max_dia']} "
-              f"(Total {data['installs_inv_total']['Total Inversión'][_cpi_cap_month]:,.0f} vs "
-              f"{data['monthly_inv_total']['Total Inversión'][_cpi_cap_month]:,.0f} sin corte)")
+    # §97: CPI = ri_inv_total / ri_installs — ambos al corte 'inst' (reemplaza el corte
+    # de un solo sentido de §93, que solo cubría installs atrasados vs inversión)
+    data['ri_installs']           = installs_data['ri_installs']
+    _ci_m = ratio_cuts['inst'].strftime('%Y%m')
+    _cpi  = lambda inv, inst: f"${inv / inst:.2f}" if inst else "—"
+    print(f"  OK CPI {_ci_m} al {ratio_cuts['inst']}: "
+          f"{_cpi(data['ri_inv_total']['Total Inversión'].get(_ci_m) or 0, data['ri_installs']['Total N+R'].get(_ci_m, 0))} "
+          f"(sin corte {_cpi(data['monthly_inv_total']['Total Inversión'].get(_ci_m) or 0, data['monthly_installs']['Total N+R'].get(_ci_m, 0))})")
 
     # ── 3c. Comunicaciones OC (Two-Tier: cache + BQ semana actual) ───────────
     # Two-Tier:
@@ -1232,8 +1383,22 @@ def assemble():
         'monthly_installs':      data['monthly_installs'],
         'monthly_installs_mom':  data['monthly_installs_mom'],
         'installs_months':       data['installs_months'],
-        'installs_inv_total':    data['installs_inv_total'],   # §92: inversión del CPI cortada
+        # §97: gemelos para los ratios que el JS recalcula al filtrar por canal. Conteos
+        # (barras, tablas) siguen con los originales; CPA / ROAS / CPI usan estos.
+        'ratio_cut_main':        ratio_cuts['main'].isoformat(),
+        'ratio_cut_inst':        ratio_cuts['inst'].isoformat(),
+        'r_nr':                  data['r_nr'],
+        'r_cost':                data['r_cost'],
+        'r_inv_total':           data['r_inv_total'],
+        'r_nr_paid':             data['r_nr_paid'],
+        'r_vpu_prod':            data['r_vpu_prod'],
+        'ri_installs':           data['ri_installs'],
+        'ri_inv_total':          data['ri_inv_total'],
     }
+
+    # ── 5b. Vigilancia §97 — chequeos de ratios y cruces (no bloquea) ──
+    print(">>> Paso 5: Validaciones de ratios y cruces (§97)...")
+    validate_ratios(data, ratio_cuts)
 
     # ── 6. Inyectar en template y escribir output ──────────────
     if not os.path.exists(TEMPLATE_PATH):

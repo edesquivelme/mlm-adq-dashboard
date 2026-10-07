@@ -292,8 +292,8 @@ def _cost_node_slice(df_cm, c, HIERARCHY_C):
     """Filas de df_cm (un mes de get_costos_tc_sql) que suman al nodo c de hierarchy_cost.
 
     Hoja con cost_mapping → su propio CANAL. 'Total Inversión' → todo. Agregado →
-    descendientes que NO son no_cost. Compartido por process_all() y
-    process_installs_capped_inv() para que ambas inversiones salgan con la misma regla.
+    descendientes que NO son no_cost. Compartido por process_all() y process_inv_at()
+    (gemelos de ratios §97) para que ambas inversiones salgan con la misma regla.
     """
     if c.get('is_leaf') and 'cost_mapping' in c:
         return df_cm[df_cm['CANAL'] == c['label']]
@@ -304,9 +304,180 @@ def _cost_node_slice(df_cm, c, HIERARCHY_C):
     return df_cm[df_cm['CANAL'].isin(valid_desc)]
 
 
-def process_all(config, client, n_prior=2):
+def _nr_node_slice(df_m, c, HIERARCHY_NR):
+    """Filas de df_m (un mes de get_nr_tc_sql) que suman al nodo c de hierarchy_nr.
+
+    Hoja → su CANAL. 'Total N+R' → todo. Agregado → sus descendientes. Compartido por el
+    loop principal de process_all() y los gemelos de ratios (§97) para que el N+R cortado
+    salga con la misma regla que el N+R completo.
+    """
+    if c.get('is_leaf'):
+        return df_m[df_m['CANAL'] == c['label']]
+    if c['label'] == 'Total N+R':
+        return df_m
+    return df_m[df_m['CANAL'].isin(get_descendants(c['id'], HIERARCHY_NR))]
+
+
+def ratio_twin(full, cut_m, cut_vals):
+    """§97 — Gemelo de `full` ({label: {yyyymm: v}}) para ratios del mes en curso.
+
+    Meses < cut_m: idénticos a full. cut_m: el valor cortado (cut_vals[label]).
+    Meses > cut_m: 0 (sin día completo → el ratio sale '—'). Las series que en full son
+    None (canales no_cost) siguen en None.
+    """
+    out = {}
+    for lbl, by_m in full.items():
+        tw = {m: v for m, v in by_m.items() if m < cut_m}
+        if lbl in cut_vals:
+            tw[cut_m] = cut_vals[lbl]
+        elif cut_m in by_m:
+            tw[cut_m] = None if by_m[cut_m] is None else 0
+        for m, v in by_m.items():
+            if m > cut_m:
+                tw[m] = None if v is None else 0
+        out[lbl] = tw
+    return out
+
+
+def _cpa_series(monthly_inv_total, monthly_nr, cost_months, months, COST_CHANNELS_NR):
+    """CPA Total y CPA Paid por mes (Total Inversión / N+R). Compartido por process_all()
+    y los gemelos de ratios (§97). Devuelve (monthly_nr_paid, monthly_cpa_total, monthly_cpa_paid)."""
+    monthly_nr_paid, monthly_cpa_total, monthly_cpa_paid = {}, {}, {}
+    for m in cost_months:
+        inv_total = monthly_inv_total['Total Inversión'].get(m) or 0
+        nr_total  = monthly_nr.get('Total N+R', {}).get(m, 0) or 0
+        nr_paid   = sum(monthly_nr.get(lbl, {}).get(m, 0) or 0 for lbl in COST_CHANNELS_NR) if m in months else 0
+        monthly_nr_paid[m]   = int(nr_paid)
+        monthly_cpa_total[m] = round(inv_total / nr_total, 2) if nr_total > 0 else None
+        monthly_cpa_paid[m]  = round(inv_total / nr_paid,  2) if nr_paid  > 0 else None
+    return monthly_nr_paid, monthly_cpa_total, monthly_cpa_paid
+
+
+# Normalización histórica Valor Pred 90D (§87): valor_hist × 0.38 para meses < Abr-2026.
+_VALOR_BREAK_MONTH  = '202604'   # Primer mes con modelo nuevo (sin factor)
+_VALOR_HIST_FACTOR  = 0.38       # Factor confirmado por equipo MktSci Corp
+
+
+def _perf_from_dfs(df_perf_paid, df_perf_vpu, df_perf_roa, monthly_nr, months, HIERARCHY_NR):
+    """N+R Paid / Gest Others / Valor (vpu_prod) / numerador ROA por canal y mes.
+
+    Recibe los DataFrames de get_perf_paid_tc_sql / get_vpu_tc_sql / get_roa_tc_sql.
+    process_all() la llama con el histórico completo y los gemelos de ratios (§97) con
+    las mismas queries cortadas al día común — así ambos salen con la misma lógica.
+    Devuelve (perf_nr_paid, perf_nr_go, perf_vpu_prod, perf_roa_num).
+    """
+    LABELS = [c['label'] for c in HIERARCHY_NR]
+    perf_nr_paid  = {l: {} for l in LABELS}
+    perf_nr_go    = {l: {} for l in LABELS}  # Gest Others (ACTIVATION_OTHER_TEAM)
+    perf_vpu_prod = {l: {} for l in LABELS}  # NR × VPU pre-multiplicado por fila BQ
+
+    for _, r in df_perf_paid.iterrows():
+        lbl = r['PERF_CANAL']; m = str(r['MONTH_ID'])
+        if lbl in perf_nr_paid:
+            perf_nr_paid[lbl][m] = int(r['NR_PAID']        or 0)
+            perf_nr_go[lbl][m]   = int(r['NR_GEST_OTHERS'] or 0)
+
+    # POM = todo paid por definición (medio 100% pago)
+    for lbl in ['POM ADQ', 'POM ACT']:
+        for m in months:
+            perf_nr_paid[lbl][m] = monthly_nr[lbl].get(m, 0)
+
+    for _, r in df_perf_vpu.iterrows():
+        lbl = r['PERF_CANAL']; m = str(r['MONTH_ID'])
+        if lbl in perf_vpu_prod:
+            perf_vpu_prod[lbl][m] = float(r['NR_VPU_PROD'] or 0)
+
+    # Propagar a nodos agregados bottom-up (mismo patrón que daily_cum)
+    for m in months:
+        for c in reversed([x for x in HIERARCHY_NR if not x.get('is_leaf')]):
+            lbl    = c['label']
+            leaves = get_descendants(c['id'], HIERARCHY_NR) if lbl != 'Total N+R' else [x['label'] for x in HIERARCHY_NR if x.get('is_leaf')]
+            perf_nr_paid[lbl][m]  = sum(perf_nr_paid[l].get(m, 0)  for l in leaves)
+            perf_nr_go[lbl][m]    = sum(perf_nr_go[l].get(m, 0)    for l in leaves)
+            perf_vpu_prod[lbl][m] = sum(perf_vpu_prod[l].get(m, 0) for l in leaves)
+
+    # ── Normalización histórica Valor Pred 90D — factor 0.38 para pre-Abr-2026 (§87) ──
+    # MktSci Corp confirmó: el cambio al modelo "Fact Based" (Abr-2026) adoptó un
+    # factor de nivelación para comparaciones históricas justas: valor_hist × 0.38.
+    # Se aplica a todos los canales y nodos (hoja + padre) para meses < '202604'.
+    # Matemáticamente correcto: padre × 0.38 = Σ(hojas × 0.38) post-propagación.
+    for lbl in perf_vpu_prod:
+        for m in list(perf_vpu_prod[lbl].keys()):
+            if m < _VALOR_BREAK_MONTH:
+                perf_vpu_prod[lbl][m] = (perf_vpu_prod[lbl][m] or 0) * _VALOR_HIST_FACTOR
+
+    # ── Numerador ROA por canal (fuente varía según canal, §5 metrics_logic.md) ─
+    # UCR Gest, OC ACT  : VALUE_PRED de COSTOS_CANALES filtrado por INV > 0
+    # POM ADQ, POM ACT  : VALUE_MKT_PREDICTION_90D_NR_USERS de DAILY_HISTORICO
+    # MGM ADQ            : EXCLUIDO del numerador ROA (§88 fix) — tiene valor predicho real
+    #                       pero inversión = 0 en Corp methodology (Incentive Engine = 0).
+    #                       Incluirlo inflaría el Total ROAS en ~0.1x vs Corp.
+    #                       ROAS MGM = "—" es correcto (no hay inversión medible).
+    # MGM ACT, UCR PRD, L&P, ORG: 0 (sin inversión directa → ROA = —)
+    # Verificado: sin MGM → Total ROAS Apr-26 = 1.71x ≈ Corp 1.7x ✓
+    perf_roa_num = {l: {} for l in LABELS}
+
+    # Paso 1: poblar canales OC desde df_perf_roa (raw, sin factor todavía)
+    for _, r in df_perf_roa.iterrows():
+        lbl = r['PERF_CANAL']; m = str(r['MONTH_ID'])
+        if lbl in perf_roa_num:
+            perf_roa_num[lbl][m] = float(r['ROA_VALUE_PRED'] or 0)
+
+    # Paso 2: aplicar 0.38 SOLO a los canales OC (vienen de BQ sin normalizar).
+    # POM se asigna en el siguiente paso desde perf_vpu_prod (ya tiene 0.38).
+    # Aplicar aquí — antes de la asignación POM — evita la doble aplicación (§89 fix).
+    _oc_roa_labels = {str(r['PERF_CANAL']) for _, r in df_perf_roa.iterrows()
+                      if str(r['PERF_CANAL']) in perf_roa_num}
+    for lbl in _oc_roa_labels:
+        for m in list(perf_roa_num[lbl].keys()):
+            if m < _VALOR_BREAK_MONTH:
+                perf_roa_num[lbl][m] = (perf_roa_num[lbl][m] or 0) * _VALOR_HIST_FACTOR
+
+    # Paso 3: asignar POM desde perf_vpu_prod (ya normalizado ×0.38 en paso anterior).
+    # MGM ADQ excluido intencionalmente (§88): su valor inflaría el Total ROAS
+    # ya que tiene perf_vpu_prod real pero inversión=0 → ROAS MGM = "—" es correcto.
+    for lbl in ['POM ADQ', 'POM ACT']:
+        for m in months:
+            perf_roa_num[lbl][m] = perf_vpu_prod[lbl].get(m, 0)
+
+    # Paso 4: propagar nodos agregados bottom-up (todas las hojas ya tienen factor correcto)
+    for m in months:
+        for c in reversed([x for x in HIERARCHY_NR if not x.get('is_leaf')]):
+            lbl    = c['label']
+            leaves = get_descendants(c['id'], HIERARCHY_NR) if lbl != 'Total N+R' else [x['label'] for x in HIERARCHY_NR if x.get('is_leaf')]
+            perf_roa_num[lbl][m] = sum(perf_roa_num[l].get(m, 0) for l in leaves)
+
+    return perf_nr_paid, perf_nr_go, perf_vpu_prod, perf_roa_num
+
+
+def process_inv_at(client, config, cut):
+    """Inversión por nodo de hierarchy_cost del mes de `cut`, del día 1 a `cut` inclusive.
+
+    Mismo SQL (get_costos_tc_sql con max_date) y misma regla por nodo (_cost_node_slice)
+    que monthly_inv_total, así que es comparable 1:1. Lo usan los gemelos de ratios (§97).
+    Devuelve ({cost_label: inv o None (no_cost)}, inversión de canales sin Plan — §95).
+    """
+    HIERARCHY_C = config['hierarchy_cost']
+    df = bq_query(client, get_costos_tc_sql(config['hierarchy_nr'], max_date=cut))
+    df['INV_TOTAL'] = df['INV_TOTAL'].fillna(0).astype(float)
+    inv = {}
+    for c in HIERARCHY_C:
+        if c.get('no_cost'):
+            inv[c['label']] = None
+            continue
+        inv[c['label']] = round(float(_cost_node_slice(df, c, HIERARCHY_C)['INV_TOTAL'].sum()), 0)
+    no_cost  = [c['label'] for c in HIERARCHY_C if c.get('no_cost')]
+    sin_plan = round(float(df[df['CANAL'].isin(no_cost)]['INV_TOTAL'].sum()), 0)
+    return inv, sin_plan
+
+
+def process_all(config, client, n_prior=2, ratio_cuts=None):
     """Ejecuta todas las queries BQ y procesamiento.
     Devuelve dict 'data' con todos los datos listos para builders.py y data_js.
+
+    ratio_cuts (§97, de gen_dashboard_v1.compute_ratio_cuts): {'main': date, 'inst': date}.
+    Con él se arman los gemelos r_* (corte 'main': CPA, VPU, ROAS) y ri_* (corte 'inst':
+    CPI, LFT) — ver el bloque 3d al final.
     """
     HIERARCHY_NR = config['hierarchy_nr']
     HIERARCHY_C  = config['hierarchy_cost']
@@ -349,12 +520,7 @@ def process_all(config, client, n_prior=2):
         df_m = df_nr[df_nr['FECHA_MES'] == m]
         for c in HIERARCHY_NR:
             lbl = c['label']
-            if c.get('is_leaf'):
-                slice_df = df_m[df_m['CANAL'] == lbl]
-            elif lbl == 'Total N+R':
-                slice_df = df_m
-            else:
-                slice_df = df_m[df_m['CANAL'].isin(get_descendants(c['id'], HIERARCHY_NR))]
+            slice_df = _nr_node_slice(df_m, c, HIERARCHY_NR)
 
             monthly_nr[lbl][m]   = int(slice_df['NR'].sum())
             monthly_cost[lbl][m] = round(slice_df['COST'].sum(), 2)
@@ -488,16 +654,8 @@ def process_all(config, client, n_prior=2):
     # CPA Total & Paid: cruce N+R (HIERARCHY_NR) × Inversión (HIERARCHY_C)
     # COST_CHANNELS_NR: canales leaf con cost_mapping (tienen inversión real)
     COST_CHANNELS_NR  = [c['label'] for c in HIERARCHY_C if c.get('is_leaf') and 'cost_mapping' in c]
-    monthly_nr_paid   = {}
-    monthly_cpa_total = {}
-    monthly_cpa_paid  = {}
-    for m in cost_months:
-        inv_total = monthly_inv_total['Total Inversión'].get(m) or 0
-        nr_total  = monthly_nr.get('Total N+R', {}).get(m, 0) or 0
-        nr_paid   = sum(monthly_nr.get(lbl, {}).get(m, 0) or 0 for lbl in COST_CHANNELS_NR) if m in months else 0
-        monthly_nr_paid[m]   = int(nr_paid)
-        monthly_cpa_total[m] = round(inv_total / nr_total, 2) if nr_total > 0 else None
-        monthly_cpa_paid[m]  = round(inv_total / nr_paid,  2) if nr_paid  > 0 else None
+    monthly_nr_paid, monthly_cpa_total, monthly_cpa_paid = _cpa_series(
+        monthly_inv_total, monthly_nr, cost_months, months, COST_CHANNELS_NR)
 
     # ── 3c. Performance: Paid/Free split + VPU + ROA — Torre de Control TC (§71) ──
     # Paid/Free: FLAG_PAID en Torre Daily / COST_USD > 0 en Individuals Performance.
@@ -508,88 +666,70 @@ def process_all(config, client, n_prior=2):
     df_perf_paid = bq_query(client, get_perf_paid_tc_sql(HIERARCHY_NR))
     df_perf_vpu  = bq_query(client, get_vpu_tc_sql(HIERARCHY_NR))
     df_perf_roa  = bq_query(client, get_roa_tc_sql())
+    perf_nr_paid, perf_nr_go, perf_vpu_prod, perf_roa_num = _perf_from_dfs(
+        df_perf_paid, df_perf_vpu, df_perf_roa, monthly_nr, months, HIERARCHY_NR)
 
-    perf_nr_paid  = {l: {} for l in LABELS}
-    perf_nr_go    = {l: {} for l in LABELS}  # Gest Others (ACTIVATION_OTHER_TEAM)
-    perf_vpu_prod = {l: {} for l in LABELS}  # NR × VPU pre-multiplicado por fila BQ
+    # ── 3d. §97 — Gemelos de los ratios del mes en curso ────────────────────
+    # Los CONTEOS (N+R, inversión, valor) muestran todo lo cargado. Los RATIOS (CPA, VPU,
+    # ROAS, CPI, LFT) del mes en curso se calculan con numerador y denominador cortados al
+    # mismo día: el último completo en TODAS sus fuentes (ratio_cuts, ver
+    # gen_dashboard_v1.compute_ratio_cuts). Torre Daily carga a las ~18:25 con ese mismo día
+    # a medias (costo parcial, N+R 0): sin el corte, el CPI salía −15% y el CPA OC +7%.
+    # Cada gemelo = original en meses cerrados, cortado en el mes del corte, 0 después.
+    # r_*  → corte 'main' (fuentes de N+R + inversión): CPA, CPA Paid, VPU, ROAS.
+    # ri_* → corte 'inst' (= main ∧ installs): CPI, LFT y la pestaña Install → Activ.
+    ratio = {}
+    if ratio_cuts:
+        _inv_cache = {}
+        def _inv_cut(cut):
+            if cut not in _inv_cache:
+                _inv_cache[cut] = process_inv_at(client, config, cut)
+            return _inv_cache[cut]
 
-    for _, r in df_perf_paid.iterrows():
-        lbl = r['PERF_CANAL']; m = str(r['MONTH_ID'])
-        if lbl in perf_nr_paid:
-            perf_nr_paid[lbl][m] = int(r['NR_PAID']        or 0)
-            perf_nr_go[lbl][m]   = int(r['NR_GEST_OTHERS'] or 0)
+        def _nr_cost_cut(cut):
+            cut_m = cut.strftime('%Y%m')
+            df_c  = df_nr[(df_nr['FECHA_MES'] == cut_m) & (df_nr['DIA'].astype(int) <= cut.day)]
+            nr, cost = {}, {}
+            for c in HIERARCHY_NR:
+                s = _nr_node_slice(df_c, c, HIERARCHY_NR)
+                nr[c['label']], cost[c['label']] = int(s['NR'].sum()), round(s['COST'].sum(), 2)
+            return nr, cost
 
-    # POM = todo paid por definición (medio 100% pago)
-    for lbl in ['POM ADQ', 'POM ACT']:
-        for m in months:
-            perf_nr_paid[lbl][m] = monthly_nr[lbl].get(m, 0)
+        cut   = ratio_cuts['main']
+        cut_m = cut.strftime('%Y%m')
+        nr_c, cost_c   = _nr_cost_cut(cut)
+        inv_c, sinp_c  = _inv_cut(cut)
+        r_nr           = ratio_twin(monthly_nr, cut_m, nr_c)
+        r_inv_total    = ratio_twin(monthly_inv_total, cut_m, inv_c)
+        p_paid, p_go, p_vpu, p_roa = _perf_from_dfs(
+            bq_query(client, get_perf_paid_tc_sql(HIERARCHY_NR, max_date=cut)),
+            bq_query(client, get_vpu_tc_sql(HIERARCHY_NR, max_date=cut)),
+            bq_query(client, get_roa_tc_sql(max_date=cut)),
+            {l: {cut_m: v} for l, v in nr_c.items()}, [cut_m], HIERARCHY_NR)
+        r_nr_paid_tot, r_cpa_total, r_cpa_paid = _cpa_series(
+            r_inv_total, r_nr, cost_months, months, COST_CHANNELS_NR)
 
-    for _, r in df_perf_vpu.iterrows():
-        lbl = r['PERF_CANAL']; m = str(r['MONTH_ID'])
-        if lbl in perf_vpu_prod:
-            perf_vpu_prod[lbl][m] = float(r['NR_VPU_PROD'] or 0)
+        cut_i   = ratio_cuts['inst']
+        cut_i_m = cut_i.strftime('%Y%m')
+        nr_i, _ = _nr_cost_cut(cut_i) if cut_i != cut else (nr_c, None)
+        inv_i, _ = _inv_cut(cut_i)
 
-    # Propagar a nodos agregados bottom-up (mismo patrón que daily_cum)
-    for m in months:
-        for c in reversed([x for x in HIERARCHY_NR if not x.get('is_leaf')]):
-            lbl    = c['label']
-            leaves = get_descendants(c['id'], HIERARCHY_NR) if lbl != 'Total N+R' else [x['label'] for x in HIERARCHY_NR if x.get('is_leaf')]
-            perf_nr_paid[lbl][m]  = sum(perf_nr_paid[l].get(m, 0)  for l in leaves)
-            perf_nr_go[lbl][m]    = sum(perf_nr_go[l].get(m, 0)    for l in leaves)
-            perf_vpu_prod[lbl][m] = sum(perf_vpu_prod[l].get(m, 0) for l in leaves)
-
-    # ── Normalización histórica Valor Pred 90D — factor 0.38 para pre-Abr-2026 (§87) ──
-    # MktSci Corp confirmó: el cambio al modelo "Fact Based" (Abr-2026) adoptó un
-    # factor de nivelación para comparaciones históricas justas: valor_hist × 0.38.
-    # Se aplica a todos los canales y nodos (hoja + padre) para meses < '202604'.
-    # Matemáticamente correcto: padre × 0.38 = Σ(hojas × 0.38) post-propagación.
-    _VALOR_BREAK_MONTH  = '202604'   # Primer mes con modelo nuevo (sin factor)
-    _VALOR_HIST_FACTOR  = 0.38       # Factor confirmado por equipo MktSci Corp
-    for lbl in perf_vpu_prod:
-        for m in list(perf_vpu_prod[lbl].keys()):
-            if m < _VALOR_BREAK_MONTH:
-                perf_vpu_prod[lbl][m] = (perf_vpu_prod[lbl][m] or 0) * _VALOR_HIST_FACTOR
-
-    # ── Numerador ROA por canal (fuente varía según canal, §5 metrics_logic.md) ─
-    # UCR Gest, OC ACT  : VALUE_PRED de COSTOS_CANALES filtrado por INV > 0
-    # POM ADQ, POM ACT  : VALUE_MKT_PREDICTION_90D_NR_USERS de DAILY_HISTORICO
-    # MGM ADQ            : EXCLUIDO del numerador ROA (§88 fix) — tiene valor predicho real
-    #                       pero inversión = 0 en Corp methodology (Incentive Engine = 0).
-    #                       Incluirlo inflaría el Total ROAS en ~0.1x vs Corp.
-    #                       ROAS MGM = "—" es correcto (no hay inversión medible).
-    # MGM ACT, UCR PRD, L&P, ORG: 0 (sin inversión directa → ROA = —)
-    # Verificado: sin MGM → Total ROAS Apr-26 = 1.71x ≈ Corp 1.7x ✓
-    perf_roa_num = {l: {} for l in LABELS}
-
-    # Paso 1: poblar canales OC desde df_perf_roa (raw, sin factor todavía)
-    for _, r in df_perf_roa.iterrows():
-        lbl = r['PERF_CANAL']; m = str(r['MONTH_ID'])
-        if lbl in perf_roa_num:
-            perf_roa_num[lbl][m] = float(r['ROA_VALUE_PRED'] or 0)
-
-    # Paso 2: aplicar 0.38 SOLO a los canales OC (vienen de BQ sin normalizar).
-    # POM se asigna en el siguiente paso desde perf_vpu_prod (ya tiene 0.38).
-    # Aplicar aquí — antes de la asignación POM — evita la doble aplicación (§89 fix).
-    _oc_roa_labels = {str(r['PERF_CANAL']) for _, r in df_perf_roa.iterrows()
-                      if str(r['PERF_CANAL']) in perf_roa_num}
-    for lbl in _oc_roa_labels:
-        for m in list(perf_roa_num[lbl].keys()):
-            if m < _VALOR_BREAK_MONTH:
-                perf_roa_num[lbl][m] = (perf_roa_num[lbl][m] or 0) * _VALOR_HIST_FACTOR
-
-    # Paso 3: asignar POM desde perf_vpu_prod (ya normalizado ×0.38 en paso anterior).
-    # MGM ADQ excluido intencionalmente (§88): su valor inflaría el Total ROAS
-    # ya que tiene perf_vpu_prod real pero inversión=0 → ROAS MGM = "—" es correcto.
-    for lbl in ['POM ADQ', 'POM ACT']:
-        for m in months:
-            perf_roa_num[lbl][m] = perf_vpu_prod[lbl].get(m, 0)
-
-    # Paso 4: propagar nodos agregados bottom-up (todas las hojas ya tienen factor correcto)
-    for m in months:
-        for c in reversed([x for x in HIERARCHY_NR if not x.get('is_leaf')]):
-            lbl    = c['label']
-            leaves = get_descendants(c['id'], HIERARCHY_NR) if lbl != 'Total N+R' else [x['label'] for x in HIERARCHY_NR if x.get('is_leaf')]
-            perf_roa_num[lbl][m] = sum(perf_roa_num[l].get(m, 0) for l in leaves)
+        ratio = dict(
+            ratio_cut_main=cut, ratio_cut_inst=cut_i,
+            r_nr=r_nr,
+            r_cost=ratio_twin(monthly_cost, cut_m, cost_c),
+            r_inv_total=r_inv_total,
+            r_inv_sin_plan={m: (sinp_c if m == cut_m else 0 if m > cut_m else v)
+                            for m, v in {**monthly_inv_sin_plan, cut_m: sinp_c}.items()},
+            r_nr_paid=ratio_twin(perf_nr_paid,   cut_m, {l: v.get(cut_m, 0) for l, v in p_paid.items()}),
+            r_vpu_prod=ratio_twin(perf_vpu_prod, cut_m, {l: v.get(cut_m, 0) for l, v in p_vpu.items()}),
+            r_roa_num=ratio_twin(perf_roa_num,   cut_m, {l: v.get(cut_m, 0) for l, v in p_roa.items()}),
+            r_cpa_total=r_cpa_total, r_cpa_paid=r_cpa_paid,
+            ri_nr=ratio_twin(monthly_nr, cut_i_m, nr_i),
+            ri_inv_total=ratio_twin(monthly_inv_total, cut_i_m, inv_i),
+        )
+        print(f"  OK Ratios del mes en curso al {cut} (CPI/LFT al {cut_i}): "
+              f"CPA Total {r_cpa_total.get(cut_m)} vs {monthly_cpa_total.get(cut_m)} sin corte")
 
     # ── Devolver todo en un dict plano para builders.py y data_js ──
     return dict(
@@ -613,6 +753,8 @@ def process_all(config, client, n_prior=2):
         # Performance (cruce de ambas fuentes)
         perf_nr_paid=perf_nr_paid, perf_nr_go=perf_nr_go, perf_vpu_prod=perf_vpu_prod,
         perf_roa_num=perf_roa_num,
+        # §97: gemelos de ratios (vacío si no se pasó ratio_cuts)
+        **ratio,
     )
 
 
@@ -804,7 +946,31 @@ def process_comms_oc(bq_client_for_fresh_query, comms_oc_cache_file_path,
 # process_installs_monthly — Installs mensuales FM + Corp (§88)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def process_installs_monthly(bq_client, config):
+def _installs_fm_from_df(df_inst, HIERARCHY_NR):
+    """Installs por label de hierarchy_nr y mes + propagación bottom-up (FM).
+    Compartido por process_installs_monthly() (histórico) y el gemelo ri_installs (§97)."""
+    LABELS = [c['label'] for c in HIERARCHY_NR]
+    monthly_installs = {l: {} for l in LABELS}
+    for _, r in df_inst.iterrows():
+        lbl = r['INST_CANAL']
+        m   = str(r['MONTH_ID'])
+        if lbl in monthly_installs:
+            monthly_installs[lbl][m] = int(r['INSTALLS'] or 0)
+
+    installs_months = sorted({m for d in monthly_installs.values() for m in d})
+    for m in installs_months:
+        for c in reversed([x for x in HIERARCHY_NR if not x.get('is_leaf')]):
+            lbl    = c['label']
+            leaves = (get_descendants(c['id'], HIERARCHY_NR)
+                      if lbl != 'Total N+R'
+                      else [x['label'] for x in HIERARCHY_NR if x.get('is_leaf')])
+            monthly_installs[lbl][m] = sum(
+                monthly_installs[l].get(m, 0) for l in leaves
+            )
+    return monthly_installs, installs_months
+
+
+def process_installs_monthly(bq_client, config, ratio_cut_inst=None):
     """Installs mensuales por canal — SSOT: LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE (§92).
 
     Fuente: meli-bi-data.WHOWNER.LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE
@@ -827,35 +993,24 @@ def process_installs_monthly(bq_client, config):
       monthly_installs_mom     {label: {yyyymm: float}}
       installs_months          list[str]
       installs_corp_by_node    {corp_node_id: {yyyymm: int}}
+      ri_installs              {label: {yyyymm: int}} — §97, solo si ratio_cut_inst:
+                               gemelo con el mes del corte cortado a ese día (denominador CPI/LFT)
     """
     HIERARCHY_NR      = config['hierarchy_nr']
     HIERARCHY_NR_CORP = config.get('hierarchy_nr_corp_detail', [])
-    LABELS = [c['label'] for c in HIERARCHY_NR]
 
     # ── 1. Query FM ──────────────────────────────────────────────────────────
     print("  Consultando BQ — Installs FM (LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE)...")
     df_inst = bq_query(bq_client, get_installs_monthly_sql(HIERARCHY_NR))
+    monthly_installs, installs_months = _installs_fm_from_df(df_inst, HIERARCHY_NR)
 
-    monthly_installs = {l: {} for l in LABELS}
-
-    for _, r in df_inst.iterrows():
-        lbl = r['INST_CANAL']
-        m   = str(r['MONTH_ID'])
-        if lbl in monthly_installs:
-            monthly_installs[lbl][m] = int(r['INSTALLS'] or 0)
-
-    installs_months = sorted({m for d in monthly_installs.values() for m in d})
-
-    # Propagación bottom-up FM
-    for m in installs_months:
-        for c in reversed([x for x in HIERARCHY_NR if not x.get('is_leaf')]):
-            lbl    = c['label']
-            leaves = (get_descendants(c['id'], HIERARCHY_NR)
-                      if lbl != 'Total N+R'
-                      else [x['label'] for x in HIERARCHY_NR if x.get('is_leaf')])
-            monthly_installs[lbl][m] = sum(
-                monthly_installs[l].get(m, 0) for l in leaves
-            )
+    # §97: gemelo del denominador del CPI/LFT — mes del corte, del día 1 al corte
+    ri_installs = None
+    if ratio_cut_inst:
+        cut_m = ratio_cut_inst.strftime('%Y%m')
+        df_cut = bq_query(bq_client, get_installs_monthly_sql(HIERARCHY_NR, max_date=ratio_cut_inst))
+        inst_cut, _ = _installs_fm_from_df(df_cut, HIERARCHY_NR)
+        ri_installs = ratio_twin(monthly_installs, cut_m, {l: v.get(cut_m, 0) for l, v in inst_cut.items()})
 
     # MoM
     monthly_installs_mom = {}
@@ -927,42 +1082,5 @@ def process_installs_monthly(bq_client, config):
         'monthly_installs_mom':  monthly_installs_mom,
         'installs_months':       installs_months,
         'installs_corp_by_node': installs_corp_by_node,
+        'ri_installs':           ri_installs,   # §97 (None si no se pasó ratio_cut_inst)
     }
-
-
-def process_installs_capped_inv(bq_client, config, monthly_inv_total, installs_max, managed_max):
-    """Inversión para el CPI de Installs, cortada al último día de installs (§92).
-
-    CPI = inversión / installs. Installs (LK_MP_INDIVIDUALS_INSTALLS_LIFECYCLE) suele
-    llegar 1 día detrás de la inversión (Torre Daily + Individuals Perf): con el mes
-    recién empezado eso infla el CPI ~25% (día 5) aunque ninguna fuente esté mal.
-    Aquí el mes de `installs_max` se recalcula con inversión hasta `installs_max`
-    inclusive — mismo SQL (get_costos_tc_sql) y misma regla por nodo
-    (_cost_node_slice) que monthly_inv_total, así que es comparable 1:1.
-
-    Si installs_max ≥ managed_max no hay nada que cortar: devuelve monthly_inv_total
-    sin consultar BQ. Los meses posteriores al de installs_max quedan con su inversión
-    completa, pero sin installs → la tabla/gráfica ya muestran CPI '—' ahí.
-
-    SOLO para CPI. CPA, Performance y el resto del dashboard siguen con
-    monthly_inv_total (N+R e inversión llegan al mismo corte, no necesitan esto).
-
-    Retorna (installs_inv_total {cost_label: {yyyymm: float}}, cap_month o None).
-    """
-    if installs_max is None or installs_max >= managed_max:
-        return monthly_inv_total, None
-
-    HIERARCHY_C = config['hierarchy_cost']
-    cap_month   = installs_max.strftime('%Y%m')
-    df_cap = bq_query(bq_client, get_costos_tc_sql(config['hierarchy_nr'], max_date=installs_max))
-    df_cap['INV_TOTAL'] = df_cap['INV_TOTAL'].fillna(0).astype(float)
-
-    installs_inv_total = {lbl: dict(by_m) for lbl, by_m in monthly_inv_total.items()}
-    for c in HIERARCHY_C:
-        lbl = c['label']
-        if c.get('no_cost'):
-            installs_inv_total.setdefault(lbl, {})[cap_month] = None
-            continue
-        slice_df = _cost_node_slice(df_cap, c, HIERARCHY_C)
-        installs_inv_total.setdefault(lbl, {})[cap_month] = round(float(slice_df['INV_TOTAL'].sum()), 0)
-    return installs_inv_total, cap_month

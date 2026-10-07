@@ -12,6 +12,8 @@
 #      minutos de BigQuery. Reintenta si falla por red (laptop recien despierta).
 #   4. actualizar_dashboard.ps1   -> genera, deploya, commit + push.
 #   5. Verifica que el push subio y que el web app sigue en DOMAIN / USER_DEPLOYING.
+#   6. Cuenta las lineas "[VALIDACION][ALERTA]" de la generacion (gen_dashboard_v1.py,
+#      Paso 5, History 97) y las pone en la notificacion. No frenan la publicacion.
 # Cada corrida deja un log en logs\ (ignorado por git) y una notificacion de Windows.
 #
 # Uso:
@@ -86,8 +88,10 @@ if (-not $Force -and -not $DryRun -and (Test-Path $STAMP) -and ((Get-Content $ST
     Finish 0 "Dashboard: ya actualizado hoy" "Hubo deploy exitoso hoy ($HOY); no se repite." -Quiet
 }
 
-# 2. Arbol de trabajo limpio
-$dirty = @(git -C $ROOT status --porcelain)
+# 2. Arbol de trabajo limpio. Se ignoran los archivos que la propia generacion reescribe
+#    (cualquier corrida local de prueba los deja modificados y esta corrida los regenera igual).
+$GENERADOS = @('skills/comms_monthly_summary.md')
+$dirty = @(git -C $ROOT status --porcelain | Where-Object { $GENERADOS -notcontains $_.Substring(3).Trim() })
 if ($dirty.Count -gt 0) {
     $dirty | ForEach-Object { Log "  sin commitear: $_" }
     Finish 1 "Dashboard NO actualizado" "Hay $($dirty.Count) archivo(s) sin commitear en el repo. Commitea o descarta y corre actualizar_dashboard.ps1."
@@ -145,4 +149,17 @@ if ($m) {
     $fecha = [datetime]::ParseExact($m.Matches[0].Groups[1].Value, 'yyyy-MM-dd', $null)
     $corte = " Pagados hasta $($fecha.ToString('yyyy-MM-dd')) (D-$(((Get-Date).Date - $fecha).Days))."
 }
-Finish 0 "Dashboard actualizado" "v$version publicada.$corte"
+# Corte comun de ratios (History 97): CPA/VPU/ROAS van hasta el ultimo dia completo en todas las fuentes
+$r = Select-String -Path $LOG -Pattern 'Ratios del mes en curso \(CPA, VPU, ROAS\) al (\d{4}-\d{2}-\d{2})' | Select-Object -First 1
+if ($r) {
+    $fr = [datetime]::ParseExact($r.Matches[0].Groups[1].Value, 'yyyy-MM-dd', $null)
+    $corte += " Ratios al $($fr.ToString('yyyy-MM-dd')) (D-$(((Get-Date).Date - $fr).Days))."
+}
+# 6. Alertas de validacion de ratios y cruces (no frenan la publicacion)
+$alertas = @(Select-String -Path $LOG -Pattern '\[VALIDACION\]\[ALERTA\] (.*)' | ForEach-Object { $_.Matches[0].Groups[1].Value })
+if ($alertas.Count -gt 0) {
+    $primera = $alertas[0]
+    if ($primera.Length -gt 120) { $primera = $primera.Substring(0, 120) + "..." }
+    Finish 0 "Dashboard publicado con $($alertas.Count) alerta(s)" "v$version publicada.$corte Revisar: $primera"
+}
+Finish 0 "Dashboard actualizado" "v$version publicada.$corte Validaciones OK."
