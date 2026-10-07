@@ -7255,3 +7255,58 @@ Inv.), Installs, Reporting y todos los demás canales.
 Comprobación manual Sep: ($5,745,722 − $1,133,375 − $3,508,998) / $3,508,998 = +31.4% ✓.
 Oct sale ▼78.7% porque compara el mes en curso (5 días) contra el Plan del mes completo — mismo
 comportamiento de siempre.
+
+---
+
+## §96 — 7-Oct-2026 — Actualización automática diaria a las 09:00 (Programador de tareas de Windows)
+
+### Problema
+
+Edgar pidió que el dashboard se actualice solo, todos los días a las 9am CDMX. Al revisar lo que
+había: **este repo nunca tuvo automatización**. No existe `.github/workflows/`; el cron de
+cron-job.org + `refresh_MLM_ADQ_Dashboard.yml` que describía `CLAUDE.md` es del repo de Sergio
+(`STATUS_DESDE_TRANSFER.md` ya lo marcaba "No configurado"). Hasta hoy el dashboard solo se
+actualizaba cuando Edgar corría `actualizar_dashboard.ps1`.
+
+### Decisión: Programador de tareas local, no GitHub Actions
+
+| | Programador de tareas (elegido) | GitHub Actions |
+|---|---|---|
+| Credenciales | Las que ya funcionan (ADC + git en el perfil de Edgar) | Subir el refresh token corporativo de Edgar como secret a un repo en github.com |
+| Requiere | Laptop encendida o que despierte; sesión iniciada | Nada local |
+| Riesgo | Si la laptop está apagada, corre al prenderla | Credencial corporativa (BigQuery + Apps Script + Drive) fuera de MELI |
+
+### Cambios
+
+| Archivo | Qué hace |
+|---|---|
+| `scripts/auto_actualizar.ps1` | Corrida desatendida. Guardias: (1) ya hubo deploy hoy → no repite (`logs/.ultimo_deploy_ok`); (2) cambios sin commitear → no corre (el `git add .` los publicaría); (3) probe ADC antes de BigQuery — 403 aborta, error de red reintenta 3× cada 3 min; (4) `actualizar_dashboard.ps1`; (5) commits sin subir + `--verify` del web app. Log por corrida en `logs/` (60 días) + notificación de Windows. `-DryRun` / `-Force`. Solo ASCII. |
+| `scripts/check_appscript.py` | `--probe` (GET del proyecto, exit 2 si no es 200 + los 2 comandos de re-auth) y `--verify` (versión servida + `entryPointConfig` == `DOMAIN`/`USER_DEPLOYING`, exit 3 si difiere). Reusa `REQUIRED_SCOPES`/`CFG_FILE`/`GCLOUD_CMD` de `deploy_appscript_v1.py`. Reemplaza `adc_scope_probe.py` y `check_webapp_access.py` del scratchpad. |
+| `scripts/registrar_tarea.ps1` | Crea/reemplaza la tarea `MLM ADQ Dashboard - actualizacion diaria` (diario 09:00, usuario actual, `Interactive`, `StartWhenAvailable`, `WakeToRun`, con batería, tope 2 h). `-Hora HH:mm`, `-Quitar`. |
+| `.gitignore` | `logs/` |
+
+### Validación
+
+- Tarea temporal desde el Programador con `-DryRun`: registro sin admin, `LastTaskResult 0` en 12 s,
+  log con probe 200 + v76 + `DOMAIN`/`USER_DEPLOYING`.
+- Guardia de árbol sucio: archivo temporal en el repo → se detiene (`exit 1`) y lo lista en el log.
+- Tarea real registrada: próxima corrida 2026-10-08 09:00; no se disparó el mismo día.
+
+### Hallazgo: a las 9:00 el corte es D-2
+
+`BT_MP_INDIVIDUALS_PERFORMANCE` es una vista sobre `meli-marketing.SANDBOX_LINK.BT_POM_MP_INDIVIDUALS_PERFORMANCE`
+(sin acceso directo), que se **reconstruye completa** cada día: time travel no deja leer antes de
+2026-10-06 09:56:18 CDMX, que es su última modificación. Cruce hora de corrida vs corte:
+
+| Corrida | Hora | Individuals Perf |
+|---|---|---|
+| 1-Oct | 12:26 / 18:41 | D-1 |
+| 2-Oct | 12:19 | D-1 |
+| 5-Oct (lun) | 10:06 | D-2 |
+| 6-Oct | 10:45 | D-1 |
+| 7-Oct | 09:20 | D-2 |
+| Sep (siempre ~9:15–9:40) | | D-2 |
+
+La "mejora a D-1" de octubre (nota de §90) era la **hora de la corrida**, no la fuente: antes de
+~10:00 Individuals Perf todavía no trae D-1, y como fija `managed_max`, todo el dashboard queda en
+D-2. Corrida de 9:00 → D-2 (como en Sep); corrida después de ~10:30 → D-1 la mayoría de los días.
