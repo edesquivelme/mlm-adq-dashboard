@@ -7321,3 +7321,71 @@ agrega la guardia 0 (sábado/domingo no corre — cubre una corrida del viernes 
 dispararía al prender la laptop el sábado). La corrida del 7-Oct 10:30 se saltó a propósito (Edgar:
 ya estaba actualizado con v76) escribiendo `logs/.ultimo_deploy_ok`; primera corrida real:
 **jueves 2026-10-08 10:30**.
+
+---
+
+## §97 — 7-Oct-2026 — Corte común de ratios del mes en curso + vigilancia automática
+
+### Problema
+
+Pedido de Edgar: corregir el CPI cuando los installs llegan **antes** que la inversión (el corte de §93
+solo cubría el caso contrario) y "accionar algo para evitar este tipo de cosas". Al investigar salió
+que el problema es general: todo ratio divide dos números de tablas distintas, y en el mes en curso
+cada tabla llega a un día diferente. Peor: **Torre Daily y la tabla de campañas UCR cargan una vez al
+día (~18:25) con ese mismo día a medias** — el 6-Oct traía costo UCR $4,167 (normal $17–30K), OC ACT
+$16K (normal $33–56K) y N+R incremental **0**. La alarma §92 imprimía "✅ alineado +0%" porque solo
+comparaba fechas máximas.
+
+Publicado en v76 (7-Oct 09:20) vs el valor correcto al 5-Oct: CPI Total $2.92 vs $3.45 (−15%), CPI POM
+−17%, CPI UCR Gest −13%, CPA OC ACT $17.60 vs $16.39 (+7%), CPA UCR Gest +3.5%, CPA Total +1.4%. La
+pestaña Install → Activ. no tenía ningún corte.
+
+### Decisión (Edgar: opción B)
+
+Una sola regla para **todos los ratios** del mes en curso (CPA, CPA Paid, VPU, VPU Paid, ROAS, CPI,
+LFT): numerador y denominador cortados al **último día completo en todas sus fuentes**. Los conteos
+(N+R, inversión, valor, installs) siguen mostrando todo lo cargado. Precio aceptado: a las 10:30 los
+ratios van a D-2 (Torre trae D-1 a medias) mientras los conteos van a D-1. Más vigilancia automática.
+
+### Cambios
+
+| Archivo | Cambio |
+|---|---|
+| `src/queries.py` | `_cut_to(sql, max_date)`: reemplaza los límites estándar (2025-01-01 / D-1) por "mes del corte, día 1 → corte"; falla si no encuentra los límites en pares. `max_date` en `get_vpu_tc_sql`, `get_perf_paid_tc_sql`, `get_roa_tc_sql` y `get_installs_monthly_sql` (este explícito por `fecha_diaria`). Sin `max_date` el SQL sale idéntico al anterior (verificado). |
+| `src/processors.py` | Helpers `_nr_node_slice`, `ratio_twin`, `_cpa_series`, `_perf_from_dfs` (bloque Performance extraído tal cual), `process_inv_at`, `_installs_fm_from_df`. `process_all(..., ratio_cuts)` arma los **gemelos** `r_*` (corte `main`) y `ri_*` (corte `inst`): = original en meses cerrados, cortado en el mes del corte, 0 después. `process_installs_monthly(..., ratio_cut_inst)` agrega `ri_installs`. Eliminada `process_installs_capped_inv` (§93), cubierta por los gemelos. |
+| `src/gen_dashboard_v1.py` | **Paso 0c** `compute_ratio_cuts()`: tabla "último día / completo hasta" por fuente. Tablas (Torre, campañas): `min(MAX, modificación − 1, ayer)`; vistas (INAPP, Individuals Perf, Installs): `min(MAX, ayer)`. `main` = mín. de las 4 fuentes de N+R/inversión; `inst` = mín.(main, Installs). Gemelo `r_nr_corp_by_node` desde el N+R diario Corp. `build_perf_corp_data` agrega campos `r_*`. **Paso 5** `validate_ratios()`: 8 chequeos `[VALIDACION][OK|ALERTA]` (atraso del corte >3 días, gemelos = original en cerrados, cortado ≤ completo, costo NR Mensual ≈ inversión Performance ±2% — atrapa fan-outs como §94 —, N+R e Installs FM = Corp ±0.5%). §92: fuera el "✅ alineado". |
+| `src/builders.py` | Todas las filas/líneas de ratio usan gemelos: Performance FM (CPA Blend, vs Plan CPA, CPA Paid, VPU, VPU Paid, vs Plan VPU, ROAS), Performance Corp (ídem + vs MoM de CPA/ROAS), gráficas Performance FM/Corp, línea CPA NR Mensual, CPI Installs (tabla y gráfica), Install → Activ. (LFT/CPI/CPA con `ri_*`), Reporting (CPA). Celdas afectadas con `†` y nota sobre la tabla con el día del corte. |
+| `src/template_dashboard.html` | `ratioDayOK(month, d)`; CPA de NR Mensual, CPI de Installs y CPA/ROAS de Performance con `D.r_*` / `D.ri_*`; CPA diario de NR Diario y NR Diario Acumulado no se dibuja después del corte. |
+| `scripts/auto_actualizar.ps1` | Notificación con "Ratios al …" y conteo de `[VALIDACION][ALERTA]` ("publicado con N alerta(s)"). La guardia de árbol sucio ignora `skills/comms_monthly_summary.md` (lo reescribe cada generación). |
+| `docs/metrics_logic.md` | §2b: la regla de corte común como Regla de Oro de todo ratio. |
+
+### Validación (misma carga de fuentes, base = código anterior)
+
+- `D`: conteos idénticos (`perf_vpu_prod` 4e-16 = ruido flotante); 9 claves nuevas, sale `installs_inv_total`.
+- Gemelos: 0 diferencias contra el original en meses cerrados.
+- Gráficas: solo cambia el último punto de las trazas de ratio; el resto de trazas idéntico.
+- HTML: 2,658 filas; cambian 172 y **todas solo en la columna de octubre**.
+- Validaciones: 8 OK, 0 alertas. Parser de alertas de `auto_actualizar.ps1` probado con una alerta falsa.
+
+| Oct-26 (mismas fuentes) | Sin corte | Con corte (al 5-Oct) |
+|---|---|---|
+| CPA Total | $6.26 | $6.45 |
+| CPA UCR Gest | $8.24 | $7.96 |
+| CPA OC ACT | $17.60 | $16.39 |
+| CPA POM ADQ | $26.53 | $24.37 |
+| ROAS Total | 0.96x | 1.04x |
+| VPU Total | $27.03 | $28.17 |
+| CPI Total | $3.35 | $3.45 |
+| CPI UCR Gest / OC ACT | $4.32 / $14.98 | $4.94 / $17.05 |
+
+POM también se mueve (−8%) aunque Individuals Perf trae su último día cargado completo. Patrón diario
+de POM ADQ en octubre: costo plano (~$44–46K/día) y N+R cayendo hacia lo más reciente — 2,459 / 2,172 /
+1,611 / 1,539 / 1,392 / 976 (días 1→6), CPA diario $18.78 → $46.84. Es consistente con una ventana de
+atribución que sigue abierta en los días recientes (no verificado contra la fuente). El corte deja
+fuera el día más inmaduro como efecto lateral; la regla de completitud mide **carga**, no
+**maduración** — el CPA de POM del mes en curso sigue algo inflado por los días 3–5.
+
+### Hallazgo sin tocar
+
+`updateChartPerf()` (JS) recalcula ROAS como `VPU × N+R Paid / Inv`, distinto de Python
+(`perf_roa_num / Inv`): al filtrar por canal la línea ROAS cambia de fórmula. Previo a §97; pendiente.

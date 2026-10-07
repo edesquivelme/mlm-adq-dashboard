@@ -38,6 +38,26 @@ Este documento contiene la lógica estricta para el cálculo de KPIs en la pesta
 * **Formato Visual**: `M USD` (Dividir entre 1,000,000).
 * **Casos Borde**: Los canales `L&P ADQ` y `L&P ACT` tienen `no_cost=true`.
 
+## 2b. Regla de corte común para ratios del mes en curso (§97 — Regla de Oro)
+Todo **ratio** (CPA, CPA Paid, VPU, VPU Paid, ROAS, CPI, LFT) divide dos números que vienen de
+tablas distintas. En el mes en curso cada tabla llega hasta un día diferente, y Torre Daily /
+campañas UCR traen su día más reciente **a medias** (cargan ~18:25 de ese mismo día: costo
+parcial, N+R incremental 0). Dividir sin alinear tuerce el ratio sin que ninguna fuente esté mal
+(7-Oct-26: CPI Total −15%, CPA OC ACT +7%).
+
+* **Regla**: en el mes en curso, numerador y denominador se cortan **al mismo día** = el último día
+  completo en **todas** sus fuentes (`compute_ratio_cuts()` en `gen_dashboard_v1.py`).
+  * Tablas (Torre Daily, campañas): completo hasta `min(MAX(día), fecha de modificación − 1)`.
+  * Vistas (INAPP, Individuals Perf, Installs): completo hasta `MAX(día)`, nunca hoy.
+  * Corte `main` (CPA, VPU, ROAS) = mín. de INAPP, Torre, campañas e Individuals Perf.
+  * Corte `inst` (CPI, LFT) = mín. de `main` e Installs.
+* **Los conteos NO se cortan**: N+R, inversión, valor e installs muestran todo lo cargado.
+* **Implementación**: gemelos `r_*` / `ri_*` de `process_all()` (= original en meses cerrados,
+  cortado en el mes del corte, 0 después). Todo cálculo nuevo de un ratio **debe** usar los
+  gemelos, nunca los dicts de conteo. Celdas afectadas llevan `†` y la tabla una nota con el día.
+* **Vigilancia**: `validate_ratios()` (Paso 5) imprime `[VALIDACION][OK|ALERTA]`; la corrida de
+  las 10:30 pone las alertas en la notificación de Windows.
+
 ## 3. Métricas de Eficiencia (CPA)
 **KPI**: CPA Blend
 * **Cálculo Matemático**: `Inversión Total / N+R Total` (Usar valores absolutos).
