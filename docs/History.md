@@ -7310,3 +7310,12 @@ actualizaba cuando Edgar corría `actualizar_dashboard.ps1`.
 La "mejora a D-1" de octubre (nota de §90) era la **hora de la corrida**, no la fuente: antes de
 ~10:00 Individuals Perf todavía no trae D-1, y como fija `managed_max`, todo el dashboard queda en
 D-2. Corrida de 9:00 → D-2 (como en Sep); corrida después de ~10:30 → D-1 la mayoría de los días.
+
+### Ajuste del mismo día: lunes a viernes 10:30 (decisión Edgar)
+
+Con el hallazgo de arriba, Edgar movió la tarea de diario 09:00 a **lunes a viernes 10:30**:
+sale en D-1 en vez de D-2, y sin fines de semana gasta ~22 versiones de Apps Script al mes en
+lugar de ~30 (techo de 200 hacia ~feb-2027 en vez de ~ene-2027, contando fixes manuales).
+`registrar_tarea.ps1` usa trigger semanal L-V con 10:30 por defecto; `auto_actualizar.ps1`
+agrega la guardia 0 (sábado/domingo no corre — cubre una corrida del viernes perdida que Windows
+dispararía al prender la laptop el sábado). Primera corrida real: miércoles 2026-10-07 10:30.
