@@ -13,6 +13,9 @@ dashboard_v1.html
 data/comms_oc_cache.json
 data/comms_oc_current_month.json
 
+# Logs de la corrida automatica (scripts/auto_actualizar.ps1)
+logs/
+
 # OS
 .DS_Store
 Thumbs.db
