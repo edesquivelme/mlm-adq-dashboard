@@ -1390,8 +1390,7 @@ def assemble():
         'r_nr':                  data['r_nr'],
         'r_cost':                data['r_cost'],
         'r_inv_total':           data['r_inv_total'],
-        'r_nr_paid':             data['r_nr_paid'],
-        'r_vpu_prod':            data['r_vpu_prod'],
+        'r_roa_num':             data['r_roa_num'],     # §98: línea ROAs = fila ROAs de la tabla
         'ri_installs':           data['ri_installs'],
         'ri_inv_total':          data['ri_inv_total'],
     }

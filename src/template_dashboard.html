@@ -2415,26 +2415,28 @@ function updateChartPerf(canal) {
   if (idxRoas    >= 0) visible[idxRoas]    = true;
   if (idxPlanInv >= 0) visible[idxPlanInv] = true;
 
-  // Recalcular CPA Blend real — §97: gemelos r_* (mes en curso al corte común de fuentes)
+  // §98: las líneas CPA Blend y ROAs dicen lo MISMO que las filas de la tabla del canal
+  // seleccionado (build_perf_table_html): inversión y N+R del nodo, no la suma de las hojas
+  // con costo. Antes sumaba solo hojas pagadas → dejaba fuera ORG y L&P ACT y la línea
+  // marcaba CPA ~$13 con la tabla en ~$5 (y ROAS con otra fórmula: VPU × N+R Paid / Inv).
+  // Gemelos r_* (§97): mes en curso al corte común de fuentes.
+  const node   = allCanals ? 'Total N+R'       : canal;   // clave en r_nr / r_roa_num
+  const invKey = allCanals ? 'Total Inversión' : canal;   // clave en r_inv_total
   if (idxCpa >= 0) {
     const y = D.cost_months.map(m => {
-      const inv = toHL.reduce((s, lbl) => s + ((D.r_inv_total[lbl] || {})[m] || 0), 0);
-      const nr  = toHL.reduce((s, lbl) => s + ((D.r_nr[lbl]        || {})[m] || 0), 0);
-      return nr > 0 ? Math.round(inv / nr * 100) / 100 : null;
+      const inv = ((D.r_inv_total[invKey] || {})[m]) || 0;
+      const nr  = ((D.r_nr[node]          || {})[m]) || 0;
+      return (inv && nr > 0) ? Math.round(inv / nr * 100) / 100 : null;
     });
     const cust = y.map(v => v != null ? '$' + v.toFixed(2) : '—');
     Plotly.restyle('chart-perf-bar', {y: [y], customdata: [cust]}, [idxCpa]);
   }
 
-  // Recalcular ROAs = (VPU_avg × N+R Paid) / Inv
+  // ROAs = numerador ROA del nodo / inversión del nodo (misma regla que la fila ROAs)
   if (idxRoas >= 0) {
     const y = D.cost_months.map(m => {
-      const inv  = toHL.reduce((s, lbl) => s + ((D.r_inv_total[lbl] || {})[m] || 0), 0);
-      const nr   = toHL.reduce((s, lbl) => s + ((D.r_nr[lbl]        || {})[m] || 0), 0);
-      const vpuP = toHL.reduce((s, lbl) => s + ((D.r_vpu_prod[lbl]  || {})[m] || 0), 0);
-      const paid = toHL.reduce((s, lbl) => s + ((D.r_nr_paid[lbl]   || {})[m] || 0), 0);
-      const vpu  = nr > 0 ? vpuP / nr : 0;
-      const vp   = vpu * paid;
+      const inv = ((D.r_inv_total[invKey] || {})[m]) || 0;
+      const vp  = ((D.r_roa_num[node]     || {})[m]) || 0;
       return (inv > 0 && vp > 0) ? Math.round(vp / inv * 100) / 100 : null;
     });
     const cust = y.map(v => v != null ? v.toFixed(2) + 'x' : '—');
