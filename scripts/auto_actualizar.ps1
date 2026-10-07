@@ -2,6 +2,8 @@
 # Corrida desatendida del ciclo diario. La lanza el Programador de tareas de Windows
 # (ver scripts\registrar_tarea.ps1). Envuelve a actualizar_dashboard.ps1 con las
 # guardias que en una corrida manual se hacen a ojo:
+#   0. Sabado o domingo -> no corre (decision Edgar: solo dias habiles). Cubre el caso
+#      de una corrida del viernes perdida que Windows dispara al prender la laptop el sabado.
 #   1. Ya hubo deploy exitoso hoy -> no repetir. Cada deploy gasta 1 de las 200
 #      versiones de Apps Script y la API no permite borrarlas.
 #   2. Hay cambios sin commitear  -> no correr. El "git add ." del paso 3 los subiria
@@ -14,7 +16,7 @@
 #
 # Uso:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\auto_actualizar.ps1
-#   ... -Force    corre aunque ya haya habido deploy exitoso hoy
+#   ... -Force    corre aunque sea fin de semana o ya haya habido deploy exitoso hoy
 #   ... -DryRun   solo guardias + probe + verify; no genera ni deploya
 # Solo ASCII en este archivo: PowerShell 5.1 lee los .ps1 sin BOM como ANSI.
 
@@ -73,6 +75,11 @@ function Finish([int]$code, [string]$title, [string]$msg, [switch]$Quiet) {
 }
 
 Log "Inicio corrida automatica (Force=$Force DryRun=$DryRun) en $ROOT"
+
+# 0. Solo dias habiles
+if (-not $Force -and (Get-Date).DayOfWeek -in @('Saturday', 'Sunday')) {
+    Finish 0 "Dashboard: fin de semana" "Hoy es $((Get-Date).DayOfWeek); la corrida automatica es solo de lunes a viernes." -Quiet
+}
 
 # 1. Ya hubo deploy exitoso hoy
 if (-not $Force -and -not $DryRun -and (Test-Path $STAMP) -and ((Get-Content $STAMP -TotalCount 1) -eq $HOY)) {
