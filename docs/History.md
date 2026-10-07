@@ -7380,12 +7380,52 @@ ratios van a D-2 (Torre trae D-1 a medias) mientras los conteos van a D-1. Más 
 
 POM también se mueve (−8%) aunque Individuals Perf trae su último día cargado completo. Patrón diario
 de POM ADQ en octubre: costo plano (~$44–46K/día) y N+R cayendo hacia lo más reciente — 2,459 / 2,172 /
-1,611 / 1,539 / 1,392 / 976 (días 1→6), CPA diario $18.78 → $46.84. Es consistente con una ventana de
-atribución que sigue abierta en los días recientes (no verificado contra la fuente). El corte deja
-fuera el día más inmaduro como efecto lateral; la regla de completitud mide **carga**, no
-**maduración** — el CPA de POM del mes en curso sigue algo inflado por los días 3–5.
+1,611 / 1,539 / 1,392 / 976 (días 1→6), CPA diario $18.78 → $46.84. **Es la ventana de atribución de
+7 días de POM ADQ / MGM ADQ (SOURCE_CD='INSTALLS', N+R 7D) — comportamiento esperado, no un error
+(decisión Edgar 7-Oct: no corregir).** Los últimos ~6 días siguen madurando; POM ACT (sin ventana 7D)
+no muestra la caída. El corte §97 mide **carga**, no **maduración**, y así se queda.
 
 ### Hallazgo sin tocar
 
 `updateChartPerf()` (JS) recalcula ROAS como `VPU × N+R Paid / Inv`, distinto de Python
-(`perf_roa_num / Inv`): al filtrar por canal la línea ROAS cambia de fórmula. Previo a §97; pendiente.
+(`perf_roa_num / Inv`): al filtrar por canal la línea ROAS cambia de fórmula. Previo a §97 →
+resuelto en §98.
+
+---
+
+## §98 — 7-Oct-2026 — Gráfica Performance FM: líneas CPA Blend y ROAs = filas de la tabla
+
+### Problema
+
+`updateChartPerf()` corre justo después de `Plotly.newPlot` al abrir la pestaña, así que la gráfica
+**nunca** mostró los valores de Python. Para "(Todos)" sumaba inversión y N+R solo de las hojas con
+costo (`D.cost_leaf_labels`: UCR Gest, OC ACT, POM ×5, MGM ADQ) → dejaba fuera ORG (~800K de 1.15M de
+N+R) y L&P ACT (~$1.1M) → **CPA de la gráfica ~$12–14 con la tabla en ~$4–6**, todos los meses. ROAS
+con otra fórmula (`VPU × N+R Paid / Inv`): 1.3–1.6x en la gráfica vs 1.0–1.26x en la tabla.
+Sin doble conteo de POM (WEB/CTW POM en $0; POM Others aparte).
+
+| Mes | CPA tabla | CPA gráfica (antes) | ROAS tabla | ROAS gráfica (antes) |
+|---|---|---|---|---|
+| Ago-26 | $4.11 | $12.49 | 1.26x | 1.41x |
+| Sep-26 | $4.97 | $13.32 | 1.07x | 1.37x |
+
+### Cambio
+
+`src/template_dashboard.html` — `updateChartPerf()`: CPA = `r_inv_total[nodo] / r_nr[nodo]`, ROAS =
+`r_roa_num[nodo] / r_inv_total[nodo]`, con nodo = canal seleccionado ('Total N+R' / 'Total Inversión'
+para "(Todos)") — la misma regla que `build_perf_table_html`. `D`: +`r_roa_num`; fuera `r_nr_paid` y
+`r_vpu_prod` (sin uso en JS). Barras y anotaciones sin cambio.
+
+### Validación
+
+JS replicado en Python contra las filas "CPA Blend." y "ROAs" de la tabla: **0 diferencias** en 9
+nodos (Total, OC+UCR, UCR Gest, OC ACT, POM TOTAL, POM ADQ, MGM ADQ, L&P TOTAL, ORG) × 22 meses.
+Filas HTML (2,658) y CHARTS idénticos a v77 — el cambio vive solo en el JS.
+
+### Queda abierto (sin decisión)
+
+El día a medias de Torre (6-Oct: N+R 0 en UCR Gest y OC ACT) cae al residual ORG, porque el tope §90
+(`_INAPP_MANAGED_CAP`) usa la fecha máxima de Torre y no su último día completo: ORG del 6-Oct
+34,850 vs ~27–30K normal. Total N+R no se afecta; sí el reparto del último día. Opción evaluada:
+usar el corte `main` de §97 como tope del residual (ORG y Total pasarían a D-2 en la mañana).
+Previo a §97.
