@@ -7429,3 +7429,48 @@ El día a medias de Torre (6-Oct: N+R 0 en UCR Gest y OC ACT) cae al residual OR
 34,850 vs ~27–30K normal. Total N+R no se afecta; sí el reparto del último día. Opción evaluada:
 usar el corte `main` de §97 como tope del residual (ORG y Total pasarían a D-2 en la mañana).
 Previo a §97.
+
+---
+
+## §99 — 8-Oct-2026 — Push desatendido: credenciales sin ventanas + reintento
+
+### Problema
+
+Primera corrida automática real (8-Oct 10:30): generación OK, **v78 publicada**, 0 alertas §97, web
+app en `DOMAIN` / `USER_DEPLOYING` — pero el push a GitHub se colgó **~18 min** (commit 10:33:41,
+error 10:52) y falló con `could not read Password ... /dev/tty: No such device`. La guardia del paso 5
+lo detectó ("Dashboard publicado, GitHub no"); el commit se subió a mano.
+
+### Causa
+
+La tarea arma su PATH desde el registro, donde `scoop\shims` va antes que
+`AppData\Local\Programs\Git\cmd` → usa el **Git de scoop (2.56)**, no el de VS Code (2.53). El
+`etc/gitconfig` de scoop trae `credential.helper = helper-selector`: un programa con ventana que
+pregunta qué helper usar. Sin elección guardada, la ventana esperó, se cerró sin respuesta y Git cayó
+al prompt de terminal (que no existe en la tarea). La credencial de GitHub estaba bien todo el tiempo.
+
+Verificado con una tarea temporal en el mismo contexto + `GCM_TRACE`: la ventana apareció a las 11:03,
+se eligió `manager` con "recordar" → `~/.gitconfig` quedó con
+`credential.helperselector.selected = manager`. Desde ahí el selector la usa solo, pero tarda ~5 s
+y reescribe `~/.gitconfig` en cada llamada. Sin eventos de suspensión ni de red en la ventana 10:25–10:55.
+
+### Cambio
+
+- `actualizar_dashboard.ps1`: push con `-c credential.helper= -c credential.helper=manager` (el
+  primero vacía la lista heredada → Git Credential Manager directo, sin selector, con cualquiera de los
+  dos Git). Fuera los 5 guiones largos — PowerShell 5.1 lee el `—` en ANSI como comilla y rompía el
+  mensaje del push (en éxito el "OK GitHub sincronizado" nunca se imprimía).
+- `scripts/auto_actualizar.ps1`: `GCM_INTERACTIVE=never` + `GIT_TERMINAL_PROMPT=0` (los heredan los
+  git hijos) → si la credencial falta o vence, falla en segundos en vez de abrir el login de GitHub.
+  Paso 5: si quedan commits sin subir, **un reintento de push** a los 60 s antes de avisar.
+- Gotcha: `$env:X = ""` en PowerShell 5.1 **borra** la variable — por eso no se usó
+  `GIT_CONFIG_COUNT`/`GIT_CONFIG_VALUE_0=""` para vaciar el helper (todo `git` fallaría).
+
+### Validación
+
+- Parser de PowerShell 5.1: 0 errores en los dos scripts; 0 bytes no-ASCII.
+- Credencial con las banderas nuevas (Git scoop): 0.9 s (antes 5.7 s), `~/.gitconfig` sin reescribir
+  → el selector no corre. Usuario sin credencial: falla en 0.9 s, "terminal prompts disabled", sin ventana.
+- Push real del commit `1773087` desde una tarea temporal (mismo contexto que la de las 10:30, Git
+  scoop): **exit 0 en 3.5 s**. Tareas temporales eliminadas.
+- Pendiente: la corrida automática del 9-Oct 10:30 como prueba de punta a punta.
