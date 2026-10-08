@@ -11,7 +11,8 @@
 #   3. Probe ADC (check_appscript.py --probe) -> si da 403 aborta antes de gastar
 #      minutos de BigQuery. Reintenta si falla por red (laptop recien despierta).
 #   4. actualizar_dashboard.ps1   -> genera, deploya, commit + push.
-#   5. Verifica que el push subio y que el web app sigue en DOMAIN / USER_DEPLOYING.
+#   5. Verifica que el push subio (si no, un reintento) y que el web app sigue en
+#      DOMAIN / USER_DEPLOYING.
 #   6. Cuenta las lineas "[VALIDACION][ALERTA]" de la generacion (gen_dashboard_v1.py,
 #      Paso 5, History 97) y las pone en la notificacion. No frenan la publicacion.
 # Cada corrida deja un log en logs\ (ignorado por git) y una notificacion de Windows.
@@ -39,6 +40,14 @@ $LOG = "$LOGS\auto_$(Get-Date -Format 'yyyy-MM-dd_HHmm').log"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $env:PYTHONUNBUFFERED = "1"
 $env:PYTHONIOENCODING = "utf-8"
+
+# Git sin ventanas ni prompts (History 99). Nadie mira la corrida: si la credencial de GitHub
+# falta o vencio, GCM abriria su ventana de login y el push se quedaria esperando. Asi falla en
+# segundos y la notificacion dice "GitHub no". Lo heredan los git de actualizar_dashboard.ps1.
+# (El helper se fuerza a manager con -c en cada push; ver $GIT_CRED.)
+$env:GCM_INTERACTIVE     = "never"
+$env:GIT_TERMINAL_PROMPT = "0"
+$GIT_CRED = @('-c', 'credential.helper=', '-c', 'credential.helper=manager')
 
 function Log([string]$msg) {
     $line = "[$(Get-Date -Format 'HH:mm:ss')] $msg"
@@ -125,8 +134,16 @@ if (-not $DryRun) {
     Set-Content -Path $STAMP -Value $HOY -Encoding ASCII
 }
 
-# 5. Push y web app
+# 5. Push y web app. Si quedaron commits sin subir (push fallido por red o credencial, o uno
+#    pendiente de una corrida anterior), un reintento antes de avisar.
 $ahead = [int](git -C $ROOT rev-list --count origin/main..HEAD)
+if ($ahead -gt 0 -and -not $DryRun) {
+    Log "Quedan $ahead commit(s) sin subir a GitHub. Reintento de push en 60 s."
+    Start-Sleep -Seconds 60
+    $push = Invoke-Logged "git" (@('-C', $ROOT) + $GIT_CRED + @('push', 'origin', 'main'))
+    $ahead = [int](git -C $ROOT rev-list --count origin/main..HEAD)
+    Log "Reintento de push: exit $push, quedan $ahead commit(s) sin subir."
+}
 $verifyOut = @(& $PY $CHECK --verify 2>&1 | ForEach-Object { "$_" })
 $verify = $LASTEXITCODE
 $verifyOut | ForEach-Object { Add-Content -Path $LOG -Value $_ -Encoding UTF8 }

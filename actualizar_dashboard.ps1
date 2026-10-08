@@ -1,6 +1,8 @@
 # actualizar_dashboard.ps1
 # Flujo completo: genera dashboard_v1.html, lo sube a Apps Script y sincroniza a GitHub.
 # Uso: .\actualizar_dashboard.ps1 (desde la raiz del proyecto)
+# Solo ASCII en este archivo: PowerShell 5.1 lee los .ps1 sin BOM como ANSI y un guion largo
+# rompe las comillas del string (History 99).
 
 $ROOT = $PSScriptRoot
 $VENV = "$ROOT\vEnv_Meli_Code1\Scripts\python.exe"
@@ -18,7 +20,7 @@ Write-Host "  MLM ADQ N+R Dashboard - Actualizar  " -ForegroundColor Cyan
 Write-Host "======================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Paso 1 — Generar HTML
+# Paso 1 - Generar HTML
 Write-Host "[1/2] Generando dashboard_v1.html..." -ForegroundColor Yellow
 $t1 = Get-Date
 & $VENV "$ROOT\src\gen_dashboard_v1.py"
@@ -29,7 +31,7 @@ if ($LASTEXITCODE -ne 0) {
 $dur1 = [math]::Round(((Get-Date) - $t1).TotalSeconds)
 Write-Host "  OK - generado en ${dur1}s" -ForegroundColor Green
 
-# Paso 2 — Deploy
+# Paso 2 - Deploy
 Write-Host ""
 Write-Host "[2/2] Subiendo a Apps Script..." -ForegroundColor Yellow
 $t2 = Get-Date
@@ -41,7 +43,11 @@ if ($LASTEXITCODE -ne 0) {
 $dur2 = [math]::Round(((Get-Date) - $t2).TotalSeconds)
 Write-Host "  OK - deployado en ${dur2}s" -ForegroundColor Green
 
-# Paso 3 — Sincronizar a GitHub
+# Paso 3 - Sincronizar a GitHub
+# Credenciales: manager (GCM) directo. Fuera de VS Code el PATH toma el Git de scoop, cuyo
+# helper es "helper-selector": abre una ventana preguntando que helper usar y el push se queda
+# esperando (8-Oct-2026: 18 min colgado y fallo, History 99). El primer -c vacia la lista.
+$GIT_CRED = @('-c', 'credential.helper=', '-c', 'credential.helper=manager')
 Write-Host ""
 Write-Host "[3/3] Sincronizando a GitHub..." -ForegroundColor Yellow
 $fecha = Get-Date -Format "yyyy-MM-dd"
@@ -50,11 +56,11 @@ git -C $ROOT commit -m "Actualizacion dashboard $fecha"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  AVISO: nada nuevo que commitear o error en commit" -ForegroundColor Yellow
 } else {
-    git -C $ROOT push origin main
+    git -C $ROOT @GIT_CRED push origin main
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "  ERROR en git push — verifica autenticacion GitHub" -ForegroundColor Red
+        Write-Host "  ERROR en git push - verifica autenticacion GitHub" -ForegroundColor Red
     } else {
-        Write-Host "  OK — GitHub sincronizado" -ForegroundColor Green
+        Write-Host "  OK - GitHub sincronizado" -ForegroundColor Green
     }
 }
 
