@@ -7522,5 +7522,5 @@ INAPP se topa a `managed_max`, así que a las 9:00 el Total y el residual ORG ta
 - Validaciones §97: ninguna depende de que los conteos lleguen a D-1 (el chequeo 1 alerta solo si los
   ratios van más atrás de D-3).
 - Para tener D-1 un día puntual: correr a mano después de ~10:20 (gasta 1 versión). Una segunda corrida
-  automática diaria duplicaría el gasto de versiones: desde v80, el techo de 199 pasaría de ~fin de
-  marzo-2027 a ~inicio de enero-2027.
+  automática diaria subiría el gasto de ~28 a ~50 versiones/mes (22 corridas + ~6 fixes manuales):
+  desde v80, el techo de 199 pasaría de ~fin de feb-2027 a ~fin de dic-2026.
