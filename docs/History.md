@@ -7473,4 +7473,54 @@ y reescribe `~/.gitconfig` en cada llamada. Sin eventos de suspensión ni de red
   → el selector no corre. Usuario sin credencial: falla en 0.9 s, "terminal prompts disabled", sin ventana.
 - Push real del commit `1773087` desde una tarea temporal (mismo contexto que la de las 10:30, Git
   scoop): **exit 0 en 3.5 s**. Tareas temporales eliminadas.
-- Pendiente: la corrida automática del 9-Oct 10:30 como prueba de punta a punta.
+- Punta a punta (9-Oct 10:30, Git scoop): push `7f42922..8d22abf` en segundos, "Dashboard
+  actualizado", v79, 4.4 min, 0 commits sin subir. **Cerrado.**
+
+---
+
+## §100 — 12-Oct-2026 — Corrida automática a las 09:00: qué se deja en la mesa
+
+### Decisión
+
+Edgar movió la corrida de L-V 10:30 a **L-V 09:00**: el equipo pide el dato antes de las 10. Tarea
+re-registrada el 12-Oct a las 10:15 con `-Hora "2026-10-13 09:00"` (primera corrida martes 13-Oct;
+fecha de mañana por precaución, para que `StartWhenAvailable` no la tome como corrida perdida). Default
+de `scripts/registrar_tarea.ps1` → `09:00`. Ese día se corrió a mano: v80, pagados al 11-Oct (D-1),
+ratios al 10-Oct (D-2), 0 alertas, 1.2 min.
+
+### Horas de carga observadas
+
+| Fuente | Carga | Corte a las 9:00 | Corte a las 10:30 |
+|---|---|---|---|
+| Individuals Perf (fija el tope `managed_max`) | ~09:55–10:20 (6-Oct 09:56; toda corrida de 10:30 trajo D-1) | **D-2** | D-1 |
+| Torre Daily / campañas UCR | tarde del día anterior (15:31–18:25), con ese día a medias | D-1 a medias (~0 N+R) | igual |
+| Installs | variable: D-1 a las 10:16 (12-Oct) y 12:56 (7-Oct); D-2 a las 10:30 (8 y 9-Oct) | sin medición; probable D-2 | D-2 o D-1 |
+
+INAPP se topa a `managed_max`, así que a las 9:00 el Total y el residual ORG también quedan en D-2.
+
+### Lo que se deja en la mesa (medido con la corrida del 12-Oct, D-1 = domingo 11)
+
+| Canal | N+R de D-1 | % del MTD | Día L-V típico de Oct |
+|---|---|---|---|
+| Total N+R | 35,353 | 8.1% | 40,844 |
+| ORG | 31,100 | 10.2% | 27,573 |
+| POM TOTAL | 3,885 | 6.6% | 5,605 |
+| MGM TOTAL | 267 | 5.5% | 466 |
+| L&P TOTAL | 64 | 3.4% | 185 |
+| OC + UCR | 37 | 0.1% | 7,015 |
+
+- **Es atraso, no pérdida**: el día entra en la corrida siguiente. El LMTD se corta al mismo día y la
+  Proy. Lineal usa el día real → MoM y ritmo vs Plan siguen comparables, con un día menos de información.
+- El peso del día faltante baja con el mes (~1/día del mes: día 5 ≈ 20%, día 15 ≈ 7%, día 28 ≈ 3.5%) y
+  sube en quincena. El lunes sale hasta el sábado; el último día de cada mes llega el día 2.
+- **No cambian**: ratios CPA/VPU/ROAS (ya iban a D-2 por el corte común de §97), OC/UCR (Torre carga en
+  la tarde), Comms_OC. El CPI puede ir un día más atrás si Installs no ha cargado.
+- **Ganancia**: el día a medias de Torre ya no cae al residual ORG en la corrida automática. El 12-Oct,
+  ORG del día 11 = 31.1K vs ~27.0K de un fin de semana típico, con OC+UCR en 37 vs ~4.9K → ~4K de OC
+  dentro de ORG. Con el tope en D-2 ese día no entra al residual (INAPP es la tabla base del LEFT JOIN →
+  no hay ORG negativo en D-1). El pendiente de §98 sigue aplicando a corridas manuales después de ~10:20.
+- Validaciones §97: ninguna depende de que los conteos lleguen a D-1 (el chequeo 1 alerta solo si los
+  ratios van más atrás de D-3).
+- Para tener D-1 un día puntual: correr a mano después de ~10:20 (gasta 1 versión). Una segunda corrida
+  automática diaria duplicaría el gasto de versiones: desde v80, el techo de 199 pasaría de ~fin de
+  marzo-2027 a ~inicio de enero-2027.
