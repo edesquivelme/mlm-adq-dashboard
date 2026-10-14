@@ -100,7 +100,9 @@ def _comms_oc_last_days(records, dias):
         return [], None, None
     hasta = max(fechas)
     desde = (datetime.date.fromisoformat(hasta) - datetime.timedelta(days=dias - 1)).isoformat()
-    return [r for r in records if desde <= str(r.get('SENT_DATE') or '')[:10] <= hasta], desde, hasta
+    sel   = [r for r in records if desde <= str(r.get('SENT_DATE') or '')[:10] <= hasta]
+    # A inicio de mes el Tier 2 solo trae el mes en curso → la ventana real puede empezar después
+    return sel, min(str(r.get('SENT_DATE'))[:10] for r in sel), hasta
 
 
 def fit_comms_oc_table(html, data, comms_records):

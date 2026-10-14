@@ -2034,8 +2034,8 @@ def build_comms_oc_table_html(data):
     ventana = data.get('comms_oc_ventana') or {}
     ventana_html = (
         '<div style="font-size:11px;color:#7a8499;margin-bottom:6px">'
-        f'Envíos del {ventana["desde"]} al {ventana["hasta"]} (últimos {ventana["dias"]} días). '
-        'La pestaña se limita para que el dashboard quepa en el tope de 10 MB de Apps Script.</div>'
+        f'Envíos del {ventana["desde"]} al {ventana["hasta"]}. La pestaña muestra como máximo los '
+        f'últimos {ventana["dias"]} días para que el dashboard quepa en el tope de 10 MB de Apps Script.</div>'
     ) if ventana.get('desde') else ''
 
     html_output = (
