@@ -7524,3 +7524,71 @@ INAPP se topa a `managed_max`, así que a las 9:00 el Total y el residual ORG ta
 - Para tener D-1 un día puntual: correr a mano después de ~10:20 (gasta 1 versión). Una segunda corrida
   automática diaria subiría el gasto de ~28 a ~50 versiones/mes (22 corridas + ~6 fixes manuales):
   desde v80, el techo de 199 pasaría de ~fin de feb-2027 a ~fin de dic-2026.
+
+## §101 — 13/14-Oct-2026 — Apps Script topa el proyecto en 10 MiB: Comms_OC a los últimos 7 días
+
+### Síntoma
+
+La primera corrida automática de las 9:00 (13-Oct, arrancó 09:10) generó el dashboard sin errores
+(0 alertas) pero no se publicó: `updateContent` respondió **400 "The project is too large to save.
+Please limit the size of your project."** La guardia funcionó: sin deploy no hubo commit, y el equipo
+siguió viendo la v80 del 12-Oct.
+
+### Causa: tope nuevo de Google, no un cambio nuestro
+
+| Fecha | HTML | Resultado |
+|---|---|---|
+| 30-Sep 09:26 | ~28 MB (Comms_OC con el mes completo, 9,474 registros) | publicado |
+| 12-Oct 10:16 | 10,174 KB | publicado (v80) |
+| 13-Oct 09:10 | 10,538 KB (10.29 MiB) | **rechazado** |
+
+Prueba en un proyecto Apps Script desechable (`ZZ prueba limite tamano - borrar`; la API no lo puede
+borrar con `drive.file`, queda para borrarlo a mano):
+
+| Contenido subido | Resultado |
+|---|---|
+| 1 archivo ASCII de 9.90 MiB | 200 |
+| 1 archivo de 10 MiB − 4 KB | 200 |
+| 1 archivo de 10 MiB + 4 KB | 400 |
+| HTML del 13-Oct partido en 2 archivos | 400 |
+| ~30 MiB en 6 archivos de ~5 | 400 |
+
+**El tope es de 10 MiB (10,485,760 bytes) para el proyecto completo**; partir el HTML no ayuda. No hay
+documentación oficial de Google; en mayo se publicaron 110 MB, así que el tope apareció entre el 30-Sep
+y el 13-Oct. Mientras Comms_OC mostraba el mes en curso, el HTML crecía ~360 KB/día y cruzaba los 10 MiB
+hacia el día 12–13 de cada mes.
+
+Anatomía del HTML del 13-Oct: tabla Comms_OC 4.17 MiB (1,775 filas, 2.4 KB/fila, ~160 filas/día);
+**el resto del dashboard 6.12 MiB** (objeto `D` 0.87, CHARTS 0.11, tablas estáticas y JS).
+
+### Decisión (Edgar)
+
+Comms_OC en el HTML = **últimos 7 días de envío** (antes: 2 meses del cache, en la práctica el mes en
+curso). El cache completo sigue alimentando el Análisis OC+UCR y `skills/comms_monthly_summary.md`.
+
+### Cambios
+
+| Archivo | Cambio |
+|---|---|
+| `src/gen_dashboard_v1.py` | `COMMS_OC_DISPLAY_DAYS = 7`. `_comms_oc_last_days()` (7 días corridos hasta el `SENT_DATE` más reciente). `fit_comms_oc_table()`: la tabla Comms_OC se inserta **al final** del ensamblado (después de `D` y CHARTS) y, si el HTML no cabe en `APPSCRIPT_HTML_BUDGET`, baja a 6, 5… días con `[VALIDACION][ALERTA]` (va a la notificación). Si ni con 1 día cabe, alerta de que el deploy va a fallar. Fuera el filtro de 2 meses del Paso 3c. |
+| `src/builders.py` | Nota en la pestaña: "Envíos del X al Y (últimos N días)…". El filtro ADHOC-INDIVIDUALS de §79 (oculta filas con funnel en 0 si la campaña tiene filas reales) usa `comms_oc_records_full` como referencia: con solo 7 días, la fila real de una campaña puede quedar fuera de la ventana y sus filas en 0 reaparecían (+6 filas el 13-Oct). |
+| `src/deploy_appscript_v1.py` | `APPSCRIPT_MAX_BYTES = 10 MiB`, `APPSCRIPT_HTML_BUDGET` = tope − 16 KB (appsscript.json + Code.gs). Error claro antes de subir si el HTML no cabe. |
+
+### Validación
+
+- Offline con el cache del 13-Oct: filas del 6 al 12-Oct **idénticas** a las de la corrida de la mañana
+  (957 = 957).
+- Claves de `D` y CHARTS iguales; resto de pestañas con el mismo número de `<tr>`.
+- Seguro de tamaño: resto simulado de 8.5 MiB → recorta a 5 días con alerta (9.98 MiB); de 10.2 MiB →
+  alerta "no cabe ni con 1 día".
+- Publicado 14-Oct 00:00: **v81**, 8.35 MiB, Comms_OC 7→13-Oct (1,019 registros), ratios al 12-Oct,
+  `access: DOMAIN` / `executeAs: USER_DEPLOYING`, push `1aa70bd..e7fb1c0`.
+
+### Margen y riesgos
+
+- Hoy sobra ~1.6 MiB. En un mes como septiembre (~316 registros/día) 7 días pesan ~5 MiB y no caben →
+  el seguro recorta a ~4–5 días y avisa.
+- El resto del dashboard (6.1 MiB) crece ~0.2 MiB por mes nuevo (columnas de las tablas estáticas;
+  Performance_vista_Corp ya pesa ~2.8 MB). Si el seguro empieza a recortar seguido, el siguiente paso es
+  adelgazar otra pestaña o servir el HTML desde fuera de Apps Script (Drive leído por `doGet`, o Grid).
+- Exportar a Excel desde Comms_OC ahora exporta solo los días visibles.
