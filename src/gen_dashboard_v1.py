@@ -46,6 +46,10 @@ COMMS_OC_CACHE_PATH  = os.path.join(PROJECT_ROOT, 'data', 'comms_oc_cache.json')
 # Tier 2: mes actual — se regenera 1 sola vez por día, luego se reutiliza.
 # Eliminar manualmente para forzar re-query: del data\comms_oc_current_month.json
 COMMS_OC_CURRENT_MONTH_PATH = os.path.join(PROJECT_ROOT, 'data', 'comms_oc_current_month.json')
+# Comms_OC en el HTML: últimos N días de envío (decisión Edgar 13-Oct-2026, §101). Apps Script
+# topa el proyecto en 10 MiB; la tabla pesa ~2.4 KB por fila (~160 filas/día en Oct-26) y el resto
+# del dashboard ~6 MiB. Si aun con N días no cabe, el Paso 4 recorta a menos días con ALERTA.
+COMMS_OC_DISPLAY_DAYS = 7
 
 def _cs(v):
     """Coerce to str NaN-safe. float NaN es truthy en Python, 'v or default' no funciona."""
@@ -85,6 +89,42 @@ from builders          import (
 from builders_analysis import build_oc_ucr_analysis_tab_html
 from builders        import build_reporting_tab_html
 from processors      import process_new_rec_monthly
+from deploy_appscript_v1 import APPSCRIPT_MAX_BYTES, APPSCRIPT_HTML_BUDGET  # §101
+
+
+def _comms_oc_last_days(records, dias):
+    """Registros de los últimos `dias` días de envío, contados desde el SENT_DATE más reciente.
+    Devuelve (registros, desde, hasta) con fechas 'YYYY-MM-DD'; sin datos → ([], None, None)."""
+    fechas = [str(r.get('SENT_DATE') or '')[:10] for r in records if r.get('SENT_DATE')]
+    if not fechas:
+        return [], None, None
+    hasta = max(fechas)
+    desde = (datetime.date.fromisoformat(hasta) - datetime.timedelta(days=dias - 1)).isoformat()
+    return [r for r in records if desde <= str(r.get('SENT_DATE') or '')[:10] <= hasta], desde, hasta
+
+
+def fit_comms_oc_table(html, data, comms_records):
+    """Inserta la tabla Comms_OC con la ventana más larga (≤ COMMS_OC_DISPLAY_DAYS días) que deja
+    el HTML dentro del tope de Apps Script (§101). Si tuvo que recortar, o si ni con 1 día cabe,
+    deja una línea [VALIDACION][ALERTA] que la corrida automática pone en la notificación."""
+    data['comms_oc_records_full'] = comms_records   # referencia del filtro ADHOC-INDIVIDUALS (§79)
+    for dias in range(COMMS_OC_DISPLAY_DAYS, 0, -1):
+        data['comms_oc_records'], desde, hasta = _comms_oc_last_days(comms_records, dias)
+        data['comms_oc_ventana'] = {'dias': dias, 'desde': desde, 'hasta': hasta}
+        out  = html.replace('{{COMMS_OC_TABLE}}', build_comms_oc_table_html(data))
+        size = len(out.encode('utf-8'))
+        if size <= APPSCRIPT_HTML_BUDGET:
+            break
+    mib, tope = size / 1048576, APPSCRIPT_MAX_BYTES / 1048576
+    print(f"  Comms_OC HTML: {len(data['comms_oc_records']):,} registros, {dias} día(s) "
+          f"({desde} → {hasta}) [cache completo: {len(comms_records):,}] · HTML {mib:.2f} de {tope:.0f} MiB")
+    if size > APPSCRIPT_HTML_BUDGET:
+        print(f"  [VALIDACION][ALERTA] HTML de {mib:.2f} MiB no cabe en Apps Script ({tope:.0f} MiB) "
+              f"ni con 1 día de Comms_OC — el deploy va a fallar")
+    elif dias < COMMS_OC_DISPLAY_DAYS:
+        print(f"  [VALIDACION][ALERTA] Comms_OC recortado a {dias} día(s) (de {COMMS_OC_DISPLAY_DAYS}) "
+              f"para caber en Apps Script: HTML {mib:.2f} de {tope:.0f} MiB")
+    return out
 
 
 def check_source_lag(client):
@@ -1263,24 +1303,9 @@ def assemble():
         comms_oc_cache_file_path=COMMS_OC_CACHE_PATH,
         comms_oc_current_month_path=COMMS_OC_CURRENT_MONTH_PATH,
     )
-    # Limitar el HTML de Comms_OC a los últimos N meses para mantener el HTML < 50 MB
-    # (límite práctico de la API de Apps Script). El cache completo se usa para análisis y skill.
-    # NOTA: 6 meses = ~53K registros = ~120 MB → timeout en deploy. Reducir a 3 = ~60 MB, 2 = ~40 MB.
-    COMMS_OC_DISPLAY_MONTHS = 2
-    _all_months_cache = sorted(set(
-        str(r.get('MONTH_ID', ''))[:6]
-        for r in all_comms_oc_records_merged_and_sorted
-        if r.get('MONTH_ID')
-    ))
-    _display_months = set(_all_months_cache[-COMMS_OC_DISPLAY_MONTHS:])
-    comms_oc_for_html = [
-        r for r in all_comms_oc_records_merged_and_sorted
-        if str(r.get('MONTH_ID', ''))[:6] in _display_months
-    ]
-    print(f"  Comms_OC HTML: {len(comms_oc_for_html):,} registros "
-          f"({len(_display_months)} meses: {sorted(_display_months)}) "
-          f"[cache completo: {len(all_comms_oc_records_merged_and_sorted):,}]")
-    data['comms_oc_records'] = comms_oc_for_html
+    # La ventana de Comms_OC en el HTML (COMMS_OC_DISPLAY_DAYS, §101) se aplica al final del Paso 4
+    # con fit_comms_oc_table(): es lo único que se recorta si el HTML no cabe en Apps Script.
+    # El cache completo se usa para el análisis OC+UCR y el resumen del skill.
 
     # Agregación mensual de Comms: conecta "lo enviado" ↔ "lo obtenido" (KPIs)
     # Usa el cache COMPLETO para no perder contexto histórico en el análisis
@@ -1438,11 +1463,10 @@ def assemble():
         plan_valor     = plan_valor,
         new_rec_monthly= new_rec_monthly,
     ))
-    # Pestaña Comms_OC — tabla HTML de comunicaciones OC (cache + BQ semana actual)
-    # Para regenerar el cache histórico: python scripts/refresh_comms_oc_cache.py
-    final_html = final_html.replace('{{COMMS_OC_TABLE}}',      build_comms_oc_table_html(data))
     final_html = final_html.replace('{{DATA_JSON}}',  json.dumps(data_js, ensure_ascii=False))
     final_html = final_html.replace('{{CHARTS_JSON}}', json.dumps(charts, ensure_ascii=False))
+    # Pestaña Comms_OC al final: con todo lo demás ya puesto, elige cuántos días caben (§101)
+    final_html = fit_comms_oc_table(final_html, data, all_comms_oc_records_merged_and_sorted)
 
     with open(OUT_HTML, 'w', encoding='utf-8') as f:
         f.write(final_html)

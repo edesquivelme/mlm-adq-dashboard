@@ -2022,11 +2022,21 @@ def build_comms_oc_table_html(data):
                 or _i('TOTAL_ARRIVED') > 0 or _i('TOTAL_OPEN') > 0
                 or _i('TOTAL_CLICK') > 0)
 
+    # §101: con la ventana de días la fila "real" de una campaña puede quedar fuera de lo que se
+    # pinta → el conjunto se arma con todos los registros cargados, no solo con los de la ventana.
     _campaigns_with_real_data = {
         (r.get('CAMPAIGN_NAME_CLEAN') or r.get('CAMPAIGN_NAME') or '')
-        for r in all_comms_oc_records
+        for r in (data.get('comms_oc_records_full') or all_comms_oc_records)
         if _funnel_nonzero(r)
     }
+
+    # §101: el HTML solo trae los últimos días de envío (tope de 10 MiB de Apps Script)
+    ventana = data.get('comms_oc_ventana') or {}
+    ventana_html = (
+        '<div style="font-size:11px;color:#7a8499;margin-bottom:6px">'
+        f'Envíos del {ventana["desde"]} al {ventana["hasta"]} (últimos {ventana["dias"]} días). '
+        'La pestaña se limita para que el dashboard quepa en el tope de 10 MB de Apps Script.</div>'
+    ) if ventana.get('desde') else ''
 
     html_output = (
         '<style id="css-comms-oc-tbl">'
@@ -2038,6 +2048,7 @@ def build_comms_oc_table_html(data):
         'border-bottom:1px solid #f2f4f8;white-space:nowrap;vertical-align:middle}'
         '.coc-td.coc-num{color:#444;text-align:right}'
         '</style>'
+        + ventana_html +
         '<div id="comms-oc-filters" style="margin-bottom:8px"></div>'
         '<div id="comms-oc-kpi-row" style="margin-bottom:4px"></div>'
         '<div style="overflow-x:auto;max-height:75vh;overflow-y:auto">'

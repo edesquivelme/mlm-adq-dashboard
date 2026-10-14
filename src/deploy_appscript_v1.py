@@ -35,6 +35,14 @@ CFG_FILE  = os.path.join(PROJECT_ROOT, 'config', '.appscript_config_v1.json')
 
 PROJECT_TITLE = 'MLM ADQ N+R Dashboard v1'
 
+# Tope de tamaño del proyecto Apps Script (§101): la suma de todos los archivos no puede pasar
+# de 10 MiB ("The project is too large to save"). Medido el 13-Oct-2026 en un proyecto de prueba:
+# 10 MiB − 4 KB pasa, 10 MiB + 4 KB falla, y partir el HTML en varios archivos no ayuda.
+# El 30-Sep aceptó 28 MB: el tope es nuevo de Google. gen_dashboard_v1.py usa el presupuesto
+# (tope menos margen para appsscript.json y Code.gs) para recortar Comms_OC si no cabe.
+APPSCRIPT_MAX_BYTES   = 10 * 1024 * 1024
+APPSCRIPT_HTML_BUDGET = APPSCRIPT_MAX_BYTES - 16 * 1024
+
 REQUIRED_SCOPES = [
     'https://www.googleapis.com/auth/cloud-platform',
     'https://www.googleapis.com/auth/script.projects',
@@ -260,6 +268,13 @@ def deploy():
         html_content = f.read()
     size_kb = len(html_content) / 1024
     print(f"dashboard_v1.html cargado: {size_kb:.0f} KB")
+    size_b = len(html_content.encode('utf-8'))
+    if size_b > APPSCRIPT_HTML_BUDGET:
+        print(f"ERROR: dashboard_v1.html pesa {size_b / 1048576:.2f} MiB y Apps Script rechaza "
+              f"proyectos de más de {APPSCRIPT_MAX_BYTES / 1048576:.0f} MiB (§101).")
+        print("  gen_dashboard_v1.py ya recorta Comms_OC para caber; si aun así no cabe, hay que")
+        print("  adelgazar otra pestaña o servir el HTML desde fuera de Apps Script.")
+        sys.exit(1)
 
     creds   = get_credentials()
     service = get_service(creds)
