@@ -2,9 +2,11 @@
 # Crea (o reemplaza) la tarea programada de Windows que corre scripts\auto_actualizar.ps1
 # de lunes a viernes a la hora indicada (hora local del equipo = CDMX).
 #
-# 09:00 por defecto (decision Edgar 12-Oct-2026: el equipo necesita el dato antes de las 10).
+# 09:15 por defecto (decision Edgar: 9:00 el 12-Oct-2026 porque el equipo necesita el dato antes
+# de las 10; 9:15 el 22-Oct-2026 para dar margen a un reinicio justo antes de las 9:00, que deja la
+# tarea sin sesion y Windows la descarta sin recuperarla, History 102).
 # Costo: Individuals Perf, que fija el corte de los conteos, se reconstruye ~09:55-10:20, asi
-# que a las 9:00 los conteos salen hasta D-2 (a las 10:30 salian hasta D-1). Los ratios no
+# que a las 9:15 los conteos salen hasta D-2 (a las 10:30 salian hasta D-1). Los ratios no
 # cambian: ya iban a D-2 por el corte comun. Para volver a D-1: -Hora 10:30 (History 100).
 #
 # Corre como el usuario actual y solo con sesion iniciada (aunque este bloqueada): el ADC de
@@ -12,12 +14,12 @@
 # Si a esa hora la laptop esta apagada o dormida, corre en cuanto vuelva a estar disponible.
 #
 # Uso (desde la raiz del proyecto):
-#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\registrar_tarea.ps1              # L-V 09:00
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\registrar_tarea.ps1              # L-V 09:15
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\registrar_tarea.ps1 -Hora 11:00  # otra hora
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\registrar_tarea.ps1 -Quitar      # borrarla
 # Solo ASCII en este archivo: PowerShell 5.1 lee los .ps1 sin BOM como ANSI.
 
-param([string]$Hora = "09:00", [switch]$Quitar)
+param([string]$Hora = "09:15", [switch]$Quitar)
 
 $DIAS   = @("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
 
