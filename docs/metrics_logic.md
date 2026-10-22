@@ -56,7 +56,7 @@ parcial, N+R incremental 0). Dividir sin alinear tuerce el ratio sin que ninguna
   cortado en el mes del corte, 0 después). Todo cálculo nuevo de un ratio **debe** usar los
   gemelos, nunca los dicts de conteo. Celdas afectadas llevan `†` y la tabla una nota con el día.
 * **Vigilancia**: `validate_ratios()` (Paso 5) imprime `[VALIDACION][OK|ALERTA]`; la corrida
-  automática (L-V 9:00) pone las alertas en la notificación de Windows.
+  automática (L-V 9:15) pone las alertas en la notificación de Windows.
 
 ## 3. Métricas de Eficiencia (CPA)
 **KPI**: CPA Blend

@@ -7592,3 +7592,42 @@ curso). El cache completo sigue alimentando el Análisis OC+UCR y `skills/comms_
   Performance_vista_Corp ya pesa ~2.8 MB). Si el seguro empieza a recortar seguido, el siguiente paso es
   adelgazar otra pestaña o servir el HTML desde fuera de Apps Script (Drive leído por `doGet`, o Grid).
 - Exportar a Excel desde Comms_OC ahora exporta solo los días visibles.
+
+## §102 — 22-Oct-2026 — Corrida automática a las 09:15: margen para un reinicio cerca de las 9:00
+
+### Qué pasó
+
+El 22-Oct no hubo corrida automática ni log. A diferencia del 16 y 19-Oct (laptop dormida, la tarea
+arranca sola ~6 min después de despertar), esta vez la laptop **estaba despierta** (salió de la espera
+a las 08:58:45), pero:
+
+| Hora | Evento |
+|---|---|
+| 08:59:04 | Reinicio desde el menú Inicio (System 1074, usuario `edesquivelme`) |
+| 08:59:37 | Arranque de Windows |
+| 09:00:00 | Programador, evento **332**: no inició la tarea porque el usuario no tenía sesión iniciada |
+| 09:00:26 | Inicio de sesión (Winlogon 7001) |
+
+La tarea corre como `Interactive` (solo con sesión, para usar el ADC y las credenciales de git del
+perfil). Esa falla **no se recupera**: `StartWhenAvailable` solo relanza corridas perdidas con el equipo
+apagado o dormido. La tarea quedó con `NumberOfMissedRuns: 1` y la siguiente corrida en el día siguiente.
+
+### Decisión (Edgar)
+
+Mover la tarea a **L-V 09:15**. Re-registrada el 22-Oct con `-Hora "2026-10-23 09:15"` (fecha de mañana
+porque había una corrida manual en curso y la guardia de `.ultimo_deploy_ok` solo se escribe al final).
+Default de `scripts/registrar_tarea.ps1` → `09:15`. Ese día se corrió a mano a las 13:31: **v88**,
+pagados y ratios al 21-Oct (D-1), validaciones OK, 12.8 min.
+
+### Efecto en los números
+
+Ninguno: Individuals Perf, que fija el corte de los conteos, carga ~09:55–10:20, así que a las 9:15 los
+conteos siguen en D-2 como a las 9:00 (§100). Ratios, OC/UCR y Comms_OC tampoco cambian. El margen solo
+cubre un reinicio cerca de las 9:00; un reinicio justo antes de las 9:15 tendría el mismo efecto.
+
+### Diagnóstico de "no corrió" (orden)
+
+1. Programador, log Operational: evento 332 = sin sesión (no se recupera, correr a mano); sin evento a
+   la hora = laptop dormida (arranca sola al volver).
+2. Kernel-Power 506 (entra a la espera) / 507 (sale) → hora de despertar.
+3. Procesos vivos de `auto_actualizar` antes de lanzar nada.
