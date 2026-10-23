@@ -1,6 +1,6 @@
 # Comms_OC Monthly Summary — Puente Comms × KPIs
 ## Para uso exclusivo de OPTIMIZADOR-OC_skill.md y analizar-OC_Comms_skill.md
-## Actualizado: 2026-10-22 13:43 | Cobertura: 202610 → 202610
+## Actualizado: 2026-10-23 09:21 | Cobertura: 202610 → 202610
 
 > **INSTRUCCIÓN PARA EL SKILL**: Leer este archivo SIEMPRE junto con
 > `analizar-Optimizar_Performance_KPIs_context.md`.
