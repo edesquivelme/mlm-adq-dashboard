@@ -1,6 +1,6 @@
 # Comms_OC Monthly Summary — Puente Comms × KPIs
 ## Para uso exclusivo de OPTIMIZADOR-OC_skill.md y analizar-OC_Comms_skill.md
-## Actualizado: 2026-10-30 10:24 | Cobertura: 202610 → 202610
+## Actualizado: 2026-11-03 08:15 | Cobertura: 202611 → 202611
 
 > **INSTRUCCIÓN PARA EL SKILL**: Leer este archivo SIEMPRE junto con
 > `analizar-Optimizar_Performance_KPIs_context.md`.
@@ -9,206 +9,252 @@
 
 ---
 
-## 202610 — Octubre 2026
-- **Comunicaciones**: 237 únicas | **Campañas únicas**: 237
+## 202611 — Noviembre 2026
+- **Comunicaciones**: 163 únicas | **Campañas únicas**: 163
 - **Funnel**: TEST 0 → ARRIVED 0 (0%) → SHOWN 0 (0%) → OPEN 0 | **Open Rate: 0.0%**
-- **USER_INC total**: +1,329 | **VALUE_INC**: $46,043 USD
+- **USER_INC total**: +2,258 | **VALUE_INC**: $76,458 USD
 - **Top 3 campañas por USER_INC**:
-  1. [flows_MLM_I_EG_MTK_NEW_CBK_GAMI_MIPERC20_mer_mky] Canal: PUSH → **+195 users** | Lift: +0.00%
-  2. [flows_MLM_I_EG_MTK_CHURN_CBK_MYIXINV_mer_ywv] Canal: PUSH → **+164 users** | Lift: +0.00%
-  3. [flows_communication_MLM_I_EG_MTK_STOCK_MONEYINHI…] Canal: PUSH → **+105 users** | Lift: +0.00%
-- **Eficiencia**: Delivery 0.0% | Visibility 0.0% | Lift avg 0.00% | Score 5.6 NR/comm | VPU inc. $34.6
-- **Por Canal**: PUSH: 2864 comms, OR 0.0%, Lift 0.00%, +43,829 UI | WPP: 166 comms, OR 0.0%, Lift 0.00%, +14,606 UI | PANDORA: 318 comms, OR 0.0%, Lift 0.00%, +4,921 UI | EMAIL: 631 comms, OR 0.0%, Lift 0.00%, +2,911 UI | JOURNEY: 280 comms, OR 0.0%, Lift 0.00%, +845 UI
-- **Por Semana del mes**: S?: 4569 comms, OR 0.0%, +67,543 UI
-- **Por Día de semana**: ?: 4569 comms, OR 0.0%
-- **Por BL**: DIGITAL ACCOUNTS: 1715 comms, Lift 0.00%, +50,882 UI | INVESTMENT: 140 comms, Lift 0.00%, +4,893 UI | CARDS: 369 comms, Lift 0.00%, +4,892 UI | WALLET: 457 comms, Lift 0.00%, +3,176 UI | SIN_BL: 376 comms, Lift 0.00%, +2,268 UI
+  1. [flows_communication_MLM_I_EG_MTK_CHURN_MIHIV2_me…] Canal: PUSH → **+294 users** | Lift: +0.00%
+  2. [flows_communication_MLM_I_EG_MTK_CHURN_MICBKHIV1…] Canal: PUSH → **+252 users** | Lift: +0.00%
+  3. [flows_MLM_I_EG_MTK_CHURN_CBK_GAMI_MIPERC20_mer_b…] Canal: PUSH → **+216 users** | Lift: +0.00%
+- **Eficiencia**: Delivery 0.0% | Visibility 0.0% | Lift avg 0.00% | Score 13.9 NR/comm | VPU inc. $33.9
+- **Por Canal**: PUSH: 103 comms, OR 0.0%, Lift 0.00%, +2,017 UI | EMAIL: 22 comms, OR 0.0%, Lift 0.00%, +218 UI | PANDORA: 30 comms, OR 0.0%, Lift 0.00%, +71 UI | RE - DISCOVERY: 7 comms, OR 0.0%, Lift 0.00%, +4 UI | WHATSAPP: 2 comms, OR 0.0%, Lift 0.00%, +1 UI
+- **Por Semana del mes**: S?: 203 comms, OR 0.0%, +2,312 UI
+- **Por Día de semana**: ?: 203 comms, OR 0.0%
+- **Por BL**: DIGITAL ACCOUNTS: 80 comms, Lift 0.00%, +1,762 UI | WALLET: 17 comms, Lift 0.00%, +193 UI | INVESTMENT: 6 comms, Lift 0.00%, +159 UI | CARDS: 13 comms, Lift 0.00%, +114 UI | CONSUMER CREDITS: 12 comms, Lift 0.00%, +56 UI
 
 ### Top campañas por Strategy × Canal
 *(Para cruce KPI → Campaña específica — OPTIMIZADOR-OC_skill.md §cruce_funnel)*
 
-**SIN_STRATEGY|PUSH** (10 comms, Σ USER_INC: +983, avg: +98):
-  1. ✅ **flows_MLM_I_EG_MTK_NEW_CBK_GAMI_MIPERC20_mer_mky**
-     USER_INC: +195 | OR: 6.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $7,023
+**SIN_STRATEGY|PUSH** (10 comms, Σ USER_INC: +1,778, avg: +178):
+  1. ✅ **flows_communication_MLM_I_EG_MTK_CHURN_MIHIV2_mer_8j7**
+     USER_INC: +294 | OR: 2.3% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $4,302
      Fecha:  (?, S?) | App: — | Canal: PUSH
      Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  2. ✅ **flows_MLM_I_EG_MTK_CHURN_CBK_MYIXINV_mer_ywv**
-     USER_INC: +164 | OR: 1.9% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $4,997
-     Fecha:  (?, S?) | App: — | Canal: PUSH
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: INVESTMENT | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  3. ✅ **flows_communication_MLM_I_EG_MTK_STOCK_MONEYINHI2_mer_9f6**
-     USER_INC: +105 | OR: 1.5% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $2,774
+  2. ✅ **flows_communication_MLM_I_EG_MTK_CHURN_MICBKHIV1_mer_eot**
+     USER_INC: +252 | OR: 2.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $5,739
      Fecha:  (?, S?) | App: — | Canal: PUSH
      Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  4. 🟡 **flows_MLM_I_EG_MTK_CHURN_CBK_GAMI_MIPERC20_mer_bz5**
-     USER_INC: +91 | OR: 2.5% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $5,743
+  3. ✅ **flows_MLM_I_EG_MTK_CHURN_CBK_GAMI_MIPERC20_mer_bz5**
+     USER_INC: +216 | OR: 2.5% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $11,498
      Fecha:  (?, S?) | App: — | Canal: PUSH
      Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  5. 🟡 **flows_MLM_I_EG_MTK_NEW_CBK_GAMI_PORCENALL2_mer_bz5**
-     USER_INC: +87 | OR: 4.8% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $2,181
+  4. ✅ **flows_MLM_I_EG_MTK_NEW_CBK_GAMI_MIPERC20_mer_mky**
+     USER_INC: +163 | OR: 7.4% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $4,836
      Fecha:  (?, S?) | App: — | Canal: PUSH
      Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  6. 🟡 **flows_MLM_I_EG_MTK_STOCK_CBK_GAMI_MIPERC20_mer_mky**
-     USER_INC: +79 | OR: 2.4% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $3,401
+  5. ✅ **flows_communication_MLM_PUSH_I_EG_MTK_CHURN_MI2C3H_mer_k7p**
+     USER_INC: +159 | OR: 2.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $12,594
      Fecha:  (?, S?) | App: — | Canal: PUSH
      Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  7. 🟡 **flows_communication_MLM_PUSH_I_EG_MTK_CHURN_CBKDEV_mer_k2i**
-     USER_INC: +79 | OR: 1.6% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $1,804
+  6. ✅ **flows_communication_MLM_I_EG_MTK_CHURN_MIFREE_V3_mer_ce9**
+     USER_INC: +147 | OR: 1.3% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $732
      Fecha:  (?, S?) | App: — | Canal: PUSH
      Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  8. 🟡 **flows_communication_MLM_I_EG_MTK_NEW_SERVICIOS_mer_6xn**
-     USER_INC: +67 | OR: 5.1% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $1,680
+  7. ✅ **flows_communication_MLM_I_EG_MTK_NEW_CPN_WALL_VAR_mer_qn3**
+     USER_INC: +145 | OR: 3.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $3,990
      Fecha:  (?, S?) | App: — | Canal: PUSH
      Strategy: SIN_STRATEGY | SubStrat: — | BL: WALLET | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  9. 🟡 **flows_communication_MLM_I_EG_MTK_CHURN_MIFREE_V1_mer_uh9**
-     USER_INC: +61 | OR: 1.9% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $730
+  8. ✅ **flows_MLM_I_EG_MTK_STOCK_CBK_GAMI_MIPERC20_mer_mky**
+     USER_INC: +145 | OR: 2.1% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $6,917
      Fecha:  (?, S?) | App: — | Canal: PUSH
      Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  10. 🟡 **flows_communication_MLM_I_EG_MTK_CHURN_MICBKHIV1_mer_eot**
-     USER_INC: +54 | OR: 2.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $812
+  9. ✅ **flows_communication_MLM_I_EG_MTK_STOCK_MONEYINHI2_mer_9f6**
+     USER_INC: +132 | OR: 1.4% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $3,414
+     Fecha:  (?, S?) | App: — | Canal: PUSH
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  10. ✅ **flows_MLM_I_EG_MTK_NEW_CBK_GAMI_PORCENALL_mer_bz5**
+     USER_INC: +125 | OR: 3.3% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $2,898
      Fecha:  (?, S?) | App: — | Canal: PUSH
      Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
 
-**SIN_STRATEGY|WPP** (8 comms, Σ USER_INC: +295, avg: +37):
-  1. 🟡 **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-CHURN_UPLIFT2_ONETEMPLATE_C**
-     USER_INC: +65 | OR: 58.9% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $2,002
-     Fecha:  (?, S?) | App: — | Canal: WPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  2. 🟡 **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-NEW_CBK-TESPUPLIFT**
-     USER_INC: +49 | OR: 64.2% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $1,531
-     Fecha:  (?, S?) | App: — | Canal: WPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  3. 🟡 **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-CHURN_UPLIFT2_ONETEMPLATE**
-     USER_INC: +44 | OR: 58.5% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $1,244
-     Fecha:  (?, S?) | App: — | Canal: WPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  4. 🟡 **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-CHURN_CBK_MONEYIN_V3**
-     USER_INC: +32 | OR: 58.4% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $934
-     Fecha:  (?, S?) | App: — | Canal: WPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  5. 🟡 **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-STOCK_UPLIFT2-ONETEMPLATE**
-     USER_INC: +31 | OR: 62.7% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $984
-     Fecha:  (?, S?) | App: — | Canal: WPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  6. 🟡 **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-CHURN_CBK_MONEYINV2**
-     USER_INC: +28 | OR: 57.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $958
-     Fecha:  (?, S?) | App: — | Canal: WPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  7. 🟡 **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-NEW_CBK-TESPUPLIFT_C**
-     USER_INC: +26 | OR: 63.3% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $840
-     Fecha:  (?, S?) | App: — | Canal: WPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  8. 🟡 **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-STOCK_UPLIFT2-ONETEMPLATE_C**
-     USER_INC: +21 | OR: 62.1% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $612
-     Fecha:  (?, S?) | App: — | Canal: WPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-
-**SIN_STRATEGY|EMAIL** (10 comms, Σ USER_INC: +58, avg: +6):
+**SIN_STRATEGY|EMAIL** (10 comms, Σ USER_INC: +223, avg: +22):
   1. 🟡 **MLM-ML-I-EG-UCR-MTK-CAMP-NIA-PERSONAL2**
-     USER_INC: +32 | OR: 10.1% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $1,127
+     USER_INC: +97 | OR: 4.5% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $2,872
      Fecha:  (?, S?) | App: — | Canal: EMAIL
      Strategy: SIN_STRATEGY | SubStrat: — | BL: CONSUMER CREDITS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  2. 🟡 **MLM-ML-I-EG-UCR-MTK-CAMP-NIA-DEB-CARD-2**
-     USER_INC: +20 | OR: 20.1% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $816
+  2. 🟡 **MLM-ML-I-EG-UCR-MTK-CAMP-NIA-DEBIT-CARD**
+     USER_INC: +71 | OR: 16.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $2,507
      Fecha:  (?, S?) | App: — | Canal: EMAIL
      Strategy: SIN_STRATEGY | SubStrat: — | BL: CARDS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  3. ⚪ neutra **MLM-ML-I-EG-UCR-MAIL-NIA-POST-COMPRA**
-     USER_INC: +2 | OR: 12.6% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $21
-     Fecha:  (?, S?) | App: — | Canal: EMAIL
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: INDIVIDUAL LIFE CYCLE | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  4. ⚪ neutra **I-M-NR-BFINMP-CCA-251106**
-     USER_INC: +1 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $28
-     Fecha:  (?, S?) | App: — | Canal: EMAIL
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: OTHERS
-     Título: (sin título)
-
-  5. ⚪ neutra **MLM_MP_ML-EMAIL_CAR_DEBCARD_AO-UCR_ALL_INST_X_X_DEFAULT_I-EG-UCR-MTK-NIA-DEBITCARD**
-     USER_INC: +1 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: EMAIL
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: CARDS | TypeName: — | NotifType: nan | Team: INDIVIDUALS
-     Título: (sin título)
-
-  6. ⚪ neutra **MLM-ML-I-EG-UCR-MTK-CAMP-NIA-CUEN-REM**
-     USER_INC: +1 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $15
-     Fecha:  (?, S?) | App: — | Canal: EMAIL
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: INDIVIDUAL LIFE CYCLE | TypeName: — | NotifType: nan | Team: INDIVIDUALS
-     Título: (sin título)
-
-  7. ⚪ neutra **MLM-ML-I-EG-UCR-MTK-CAMP-NIA-CELLPHONE**
-     USER_INC: +1 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $14
-     Fecha:  (?, S?) | App: — | Canal: EMAIL
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: WALLET | TypeName: — | NotifType: nan | Team: INDIVIDUALS
-     Título: (sin título)
-
-  8. ⚪ neutra **MLM-ML-I-EG-UCR-MTK-CAMP-NIA-CREDITOAU**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+  3. 🟡 **MLM-ML-I-EG-UCR-MTK-CAMP-NIA-DEB-CARD-2**
+     USER_INC: +32 | OR: 13.6% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $1,030
      Fecha:  (?, S?) | App: — | Canal: EMAIL
      Strategy: SIN_STRATEGY | SubStrat: — | BL: CARDS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  9. ⚪ neutra **MLM-ML-I-EG-UCR-MTK-CAMP-NIA-DINEROPLUS**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+  4. 🟡 **flows_communication_MLM_I_EG_CHURN_EMAIL_HV_mer_xmn**
+     USER_INC: +19 | OR: 12.9% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $1,821
      Fecha:  (?, S?) | App: — | Canal: EMAIL
      Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
-  10. ⚪ neutra **flows_MLM_I_EG_UCR_BARRIDA_TD_EMAIL_mer_dcu**
-     USER_INC: +0 | OR: 6.1% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+  5. ⚪ neutra **FLOWS_MLM_I_EG_UCR_BARRIDA_TD_EMAIL_MER_DCU**
+     USER_INC: +4 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $85
+     Fecha:  (?, S?) | App: — | Canal: EMAIL
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: INDIVIDUAL LIFE CYCLE | TypeName: — | NotifType: nan | Team: INDIVIDUALS
+     Título: (sin título)
+
+  6. ⚪ neutra **MLM_MP_ML-EMAIL_CAR_DEBCARD_AO-UCR_ALL_INST_X_X_DEFAULT_I-EG-UCR-MTK-NIA-DEBITCARD**
+     USER_INC: +1 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $28
+     Fecha:  (?, S?) | App: — | Canal: EMAIL
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: CARDS | TypeName: — | NotifType: nan | Team: INDIVIDUALS
+     Título: (sin título)
+
+  7. ⚪ neutra **MLM-ML-I-EG-UCR-MAIL-NIA-POST-COMPRA**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
      Fecha:  (?, S?) | App: — | Canal: EMAIL
      Strategy: SIN_STRATEGY | SubStrat: — | BL: INDIVIDUAL LIFE CYCLE | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
+  8. ⚪ neutra **flows_MLM_I_EG_UCR_BARRIDA_TD_EMAIL_mer_dcu**
+     USER_INC: +0 | OR: 5.4% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: EMAIL
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: INDIVIDUAL LIFE CYCLE | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
 
-**SIN_STRATEGY|RE - DISCOVERY** (3 comms, Σ USER_INC: +3, avg: +1):
-  1. ⚪ neutra **MLM_ML_I_EG_UCR_DISC_NIA_MONEY_IN_DSP_DEBIT**
-     USER_INC: +3 | OR: 0.9% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $26
+  9. ⚪ neutra **MAIL_CREACUENTA_D0**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: EMAIL
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: OTHERS
+     Título: (sin título)
+
+  10. ⚪ neutra **MLM-ML-I-EG-UCR-MTK-CAMP-NIA-APPINSTALL**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: EMAIL
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: INDIVIDUAL LIFE CYCLE | TypeName: — | NotifType: nan | Team: INDIVIDUALS
+     Título: (sin título)
+
+
+**SIN_STRATEGY|WHATSAPP** (2 comms, Σ USER_INC: +1, avg: +1):
+  1. ⚪ neutra **MLM_I_EG_NEW_POMTEST_INBOUND**
+     USER_INC: +1 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $16
+     Fecha:  (?, S?) | App: — | Canal: WHATSAPP
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: OTHERS
+     Título: (sin título)
+
+  2. ⚪ neutra **MLM_MP_WSPP-WAP_CC_CL_TRANSAC_C-EG-ACT-LINEA-ENCENDIDO**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: WHATSAPP
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: OTHERS
+     Título: (sin título)
+
+
+**SIN_STRATEGY|RE - DRAWER** (3 comms, Σ USER_INC: +0, avg: +0):
+  1. ⚪ neutra **MLM_DRW_UCR_I_EG_MP_GENERIC**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: RE - DRAWER
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: nan | Team: OTHERS
+     Título: (sin título)
+
+  2. ⚪ neutra **MLM_DRW_UCR_I_EG_MP_GENERIC_MP**
+     USER_INC: +0 | OR: 0.4% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: RE - DRAWER
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: nan | Team: OTHERS
+     Título: (sin título)
+
+  3. ⚪ neutra **MLM_DRW_UCR_I_EG_MP_GENERIC_4**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: RE - DRAWER
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: RECURRING | Team: OTHERS
+     Título: (sin título)
+
+
+**SIN_STRATEGY|PANDORA** (10 comms, Σ USER_INC: +0, avg: +0):
+  1. ⚪ neutra **MLM_ML_ACT_I_EG_CHURN_PAND_HV_V2**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: PANDORA
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  2. ⚪ neutra **MLM_ML_ACT_I_EG_CHURN_PAND_LV_V2**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: PANDORA
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  3. ⚪ neutra **MLM_ML_ACT_I_EG_CHURN_PAND_MV_V2**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: PANDORA
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  4. ⚪ neutra **MLM_ML_ACT_I_EG_NEW_PAND_LV_V2**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: PANDORA
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  5. ⚪ neutra **MLM_ML_ACT_I_EG_STOCK_PAND_LV_V2**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: PANDORA
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  6. ⚪ neutra **MLM_ML_ACT_I_EG_STOCK_PAND_MV_V2**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: PANDORA
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  7. ⚪ neutra **MLM_ML_INST_MLM_ML_I_EG_UCR_PAND_VALOR_ALTO_B**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: PANDORA
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: INDIVIDUALS
+     Título: (sin título)
+
+  8. ⚪ neutra **MLM_ML_INST_MLM_ML_I_EG_UCR_PAND_VALOR_MED_B**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: PANDORA
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: INDIVIDUALS
+     Título: (sin título)
+
+  9. ⚪ neutra **MLM_ML_ACT_I_EG_NEW_PAND_HV_V2**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: PANDORA
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  10. ⚪ neutra **MLM_ML_ACT_I_EG_NEW_PAND_MV_V2**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: PANDORA
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+
+**SIN_STRATEGY|RE - DISCOVERY** (3 comms, Σ USER_INC: +0, avg: +0):
+  1. ⚪ neutra **MLM_ML_I_EG_UCR_DISC_NIA_CARDS_V2**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
      Fecha:  (?, S?) | App: — | Canal: RE - DISCOVERY
      Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: INDIVIDUALS
      Título: (sin título)
 
-  2. ⚪ neutra **MLM_ML_I_EG_UCR_DISC_NIA_CARDS_V2**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+  2. ⚪ neutra **MLM_ML_I_EG_UCR_DISC_NIA_MONEY_IN_DSP_DEBIT**
+     USER_INC: +0 | OR: 1.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
      Fecha:  (?, S?) | App: — | Canal: RE - DISCOVERY
      Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: INDIVIDUALS
      Título: (sin título)
@@ -220,199 +266,85 @@
      Título: (sin título)
 
 
-**SIN_STRATEGY|WHATSAPP** (8 comms, Σ USER_INC: +1, avg: +0):
-  1. ⚪ neutra **MLM_I_EG_NEW_POMTEST_INBOUND**
-     USER_INC: +1 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $67
-     Fecha:  (?, S?) | App: — | Canal: WHATSAPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: OTHERS
-     Título: (sin título)
-
-  2. ⚪ neutra **WHATSAPP_SEPTIEMBRE**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: WHATSAPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: OTHERS
-     Título: (sin título)
-
-  3. ⚪ neutra **MLM_MP_WSPP-WAP_ILC_MP-INS_I-EG-UCR_AUDIENCIA_SIN_ML**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: WHATSAPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: INDIVIDUAL LIFE CYCLE | TypeName: — | NotifType: nan | Team: INDIVIDUALS
-     Título: (sin título)
-
-  4. ⚪ neutra **MLM_MP_EG_WHATSAPP**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: WHATSAPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: OTHERS
-     Título: (sin título)
-
-  5. ⚪ neutra **MLM_MP_WSPP-WAP_ILC_MP-INS_TRANSAC_I-EG-UCR**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: WHATSAPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: INDIVIDUAL LIFE CYCLE | TypeName: — | NotifType: nan | Team: INDIVIDUALS
-     Título: (sin título)
-
-  6. ⚪ neutra **MLM_MP_WSPP-WA[…]K=MERCADOPAGO://MODAL/FULL?ID=MODAL_SPEI_ENG_250729**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: WHATSAPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: OTHERS
-     Título: (sin título)
-
-  7. ⚪ neutra **MLM_MJE_INI_I_EG_UCR**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: WHATSAPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: OTHERS
-     Título: (sin título)
-
-  8. ⚪ neutra **MLM_MP_WSPP-WAP_CC_CL_TRANSAC_C-EG-ACT-LINEA-ENCENDIDO**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: WHATSAPP
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: OTHERS
-     Título: (sin título)
-
-
-**SIN_STRATEGY|PANDORA** (10 comms, Σ USER_INC: +0, avg: +0):
-  1. ⚪ neutra **MLM_ML_ACT_I_EG_NEW_PAND_HV_V2**
-     USER_INC: +0 | OR: 0.2% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $27
-     Fecha:  (?, S?) | App: — | Canal: PANDORA
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  2. ⚪ neutra **MLM_ML_ACT_I_EG_CHURN_PAND_HV_V2**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: PANDORA
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  3. ⚪ neutra **MLM_ML_ACT_I_EG_CHURN_PAND_LV_V2**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: PANDORA
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  4. ⚪ neutra **MLM_ML_ACT_I_EG_CHURN_PAND_MV_V2**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: PANDORA
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  5. ⚪ neutra **MLM_ML_ACT_I_EG_NEW_PAND_LV_V2**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: PANDORA
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  6. ⚪ neutra **MLM_ML_ACT_I_EG_NEW_PAND_MV_V2**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: PANDORA
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  7. ⚪ neutra **MLM_ML_ACT_I_EG_STOCK_PAND_HV_V2**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: PANDORA
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  8. ⚪ neutra **MLM_ML_ACT_I_EG_STOCK_PAND_LV_V2**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: PANDORA
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  9. ⚪ neutra **MLM_ML_ACT_I_EG_STOCK_PAND_MV_V2**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: PANDORA
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  10. ⚪ neutra **MLM_ML_INST_MLM_ML_I_EG_UCR_PAND_VALOR_ALTO_B**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: PANDORA
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-
-**SIN_STRATEGY|RE - DRAWER** (7 comms, Σ USER_INC: +0, avg: +0):
-  1. ⚪ neutra **MLM_DRW_UCR_I_EG_MP_GENERIC**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: RE - DRAWER
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: RECURRING | Team: OTHERS
-     Título: (sin título)
-
-  2. ⚪ neutra **MLM_DRW_UCR_I_EG_MP_GENERIC_MP**
-     USER_INC: +0 | OR: 0.3% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: RE - DRAWER
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: RECURRING | Team: OTHERS
-     Título: (sin título)
-
-  3. ⚪ neutra **MLM_DRW_UCR_I_EG_MP_GENERIC_4**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: RE - DRAWER
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: RECURRING | Team: OTHERS
-     Título: (sin título)
-
-  4. ⚪ neutra **MLM_DRW_UCR_I_EG_MP_ALTO_VALOR_CPN_CG**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: RE - DRAWER
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: RECURRING | Team: OTHERS
-     Título: (sin título)
-
-  5. ⚪ neutra **MLM_DRW_UCR_I_EG_MP_VERSION_GENERIC**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: RE - DRAWER
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: RECURRING | Team: OTHERS
-     Título: (sin título)
-
-  6. ⚪ neutra **MLM_DRW_UCR_I_EG_MP_CARDS**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: RE - DRAWER
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: RECURRING | Team: OTHERS
-     Título: (sin título)
-
-  7. ⚪ neutra **MLM_MP_I_EG_UCR_DRW_NIA_TEST4**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: RE - DRAWER
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-
 **SIN_STRATEGY|RE - QUICK ACCESS** (5 comms, Σ USER_INC: +0, avg: +0):
-  1. ⚪ neutra **MLM_QA_MELI_MP_AV_200_CTRL**
-     USER_INC: +0 | OR: 0.1% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: RE - QUICK ACCESS
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: RECURRING | Team: OTHERS
-     Título: (sin título)
-
-  2. ⚪ neutra **MLM_QA_MELI_MP_AV_200_TEST**
-     USER_INC: +0 | OR: 0.1% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: RE - QUICK ACCESS
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: RECURRING | Team: OTHERS
-     Título: (sin título)
-
-  3. ⚪ neutra **MLM_QA_MELI_MP_GENERIC**
-     USER_INC: +0 | OR: 1.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: RE - QUICK ACCESS
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
-     Título: (sin título)
-
-  4. ⚪ neutra **MLM_QA_MELI_MP_ACQPTS_GC**
-     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+  1. ⚪ neutra **MLM_QA_MELI_MP_ACQPTS_GC**
+     USER_INC: +0 | OR: 0.2% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
      Fecha:  (?, S?) | App: — | Canal: RE - QUICK ACCESS
      Strategy: SIN_STRATEGY | SubStrat: — | BL: INDIVIDUAL LIFE CYCLE | TypeName: — | NotifType: nan | Team: OTHERS
      Título: (sin título)
 
-  5. ⚪ neutra **MLM_QA_MELI_MP_ACQPTS_T2**
+  2. ⚪ neutra **MLM_QA_MELI_MP_ACQPTS_T2**
+     USER_INC: +0 | OR: 0.2% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: RE - QUICK ACCESS
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: INDIVIDUAL LIFE CYCLE | TypeName: — | NotifType: nan | Team: OTHERS
+     Título: (sin título)
+
+  3. ⚪ neutra **MLM_QA_MELI_MP_AV_200_CTRL**
      USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
      Fecha:  (?, S?) | App: — | Canal: RE - QUICK ACCESS
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: INDIVIDUAL LIFE CYCLE | TypeName: — | NotifType: RECURRING | Team: OTHERS
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: nan | Team: OTHERS
+     Título: (sin título)
+
+  4. ⚪ neutra **MLM_QA_MELI_MP_AV_200_TEST**
+     USER_INC: +0 | OR: 0.4% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: RE - QUICK ACCESS
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: nan | Team: OTHERS
+     Título: (sin título)
+
+  5. ⚪ neutra **MLM_QA_MELI_MP_GENERIC**
+     USER_INC: +0 | OR: 0.2% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: RE - QUICK ACCESS
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: MP GENERIC | TypeName: — | NotifType: nan | Team: INDIVIDUALS
      Título: (sin título)
 
 
-**SIN_STRATEGY|SIN_CANAL** (1 comms, Σ USER_INC: +0, avg: +0):
-  1. ⚪ neutra **SIN ASIGNAR**
+**SIN_STRATEGY|WPP** (8 comms, Σ USER_INC: +0, avg: +0):
+  1. ⚪ neutra **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-STOCK_UPLIFT2-ONETEMPLATE**
      USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
-     Fecha:  (?, S?) | App: — | Canal: nan
-     Strategy: SIN_STRATEGY | SubStrat: — | BL: — | TypeName: — | NotifType: nan | Team: INDIVIDUALS
+     Fecha:  (?, S?) | App: — | Canal: WPP
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  2. ⚪ neutra **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-CHURN_UPLIFT2_ONETEMPLATE**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: WPP
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  3. ⚪ neutra **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-NEW_CBK-TESPUPLIFT**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: WPP
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  4. ⚪ neutra **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-CHURN_CBK_MONEYINV2**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: WPP
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  5. ⚪ neutra **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-CHURN_UPLIFT2_ONETEMPLATE_C**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: WPP
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  6. ⚪ neutra **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-STOCK_UPLIFT2-ONETEMPLATE_C**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: WPP
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  7. ⚪ neutra **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-NEW_CBK-TESPUPLIFT_C**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: WPP
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
+     Título: (sin título)
+
+  8. ⚪ neutra **MLM_MP_WSPP-WAP_DACC_MNYIN_TRANSAC_I-EG-CHURN_CBK_MONEYIN_V3**
+     USER_INC: +0 | OR: 0.0% | LIFT: +0.000% | TEST: 0 | VALUE_INC: $0
+     Fecha:  (?, S?) | App: — | Canal: WPP
+     Strategy: SIN_STRATEGY | SubStrat: — | BL: DIGITAL ACCOUNTS | TypeName: — | NotifType: RECURRING | Team: INDIVIDUALS
      Título: (sin título)
 
 
@@ -480,4 +412,4 @@
 
 ---
 
-*Generado automáticamente por `gen_dashboard_v1.py` · Datos: Comms_OC cache (202610)*
+*Generado automáticamente por `gen_dashboard_v1.py` · Datos: Comms_OC cache (202611)*
